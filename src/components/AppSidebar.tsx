@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, Search, FileText, ImageIcon,
-  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, Zap
+  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -15,6 +15,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import megakumulLogo from "@/assets/megakumul-logo.png";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -42,9 +43,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-primary glow-primary">
-            <Zap className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img src={megakumulLogo} alt="MegaKUMUL" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
           {!collapsed && (
             <span className="text-lg font-heading font-bold gradient-text">
               MegaKUMUL

@@ -5,8 +5,11 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Message } from "@/lib/types";
-import { Zap, ArrowRight, Search, Lightbulb, Code, ListChecks, RefreshCw, Copy, Check } from "lucide-react";
+import { ArrowRight, Search, Lightbulb, Code, ListChecks, RefreshCw, Copy, Check, Star } from "lucide-react";
 import { preprocessLatex } from "@/lib/latex-utils";
+import { saveResponse } from "@/pages/SavedResponsesPage";
+import { toast } from "sonner";
+import megakumulLogo from "@/assets/megakumul-logo.png";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -25,20 +28,29 @@ const followUpActions = [
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
   return (
-    <button
-      onClick={handleCopy}
-      className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      title="Copy response"
-    >
+    <button onClick={handleCopy} className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Copy response">
       {copied ? <Check className="h-3.5 w-3.5 text-[hsl(150,80%,50%)]" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+function SaveButton({ content }: { content: string }) {
+  const [saved, setSaved] = useState(false);
+  const handleSave = () => {
+    saveResponse({ title: content.slice(0, 80), content, source: "chat" });
+    setSaved(true);
+    toast.success("Response saved!");
+    setTimeout(() => setSaved(false), 3000);
+  };
+  return (
+    <button onClick={handleSave} className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Save response">
+      <Star className={`h-3.5 w-3.5 ${saved ? "text-[hsl(45,90%,55%)] fill-[hsl(45,90%,55%)]" : ""}`} />
     </button>
   );
 }
@@ -60,47 +72,19 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="flex h-20 w-20 items-center justify-center rounded-2xl gradient-primary glow-primary"
-        >
-          <Zap className="h-10 w-10 text-primary-foreground" />
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
+          <img src={megakumulLogo} alt="MegaKUMUL" className="h-20 w-20 rounded-2xl object-cover shadow-[0_0_30px_hsl(195,100%,50%,0.3)]" />
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center"
-        >
-          <h2 className="mb-2 text-2xl font-heading font-bold gradient-text">
-            Welcome to MegaKUMUL
-          </h2>
-          <p className="max-w-md text-muted-foreground">
-            Your AI research & intelligence platform. Ask anything, research deeply, generate code, and more.
-          </p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-center">
+          <h2 className="mb-2 text-2xl font-heading font-bold gradient-text">Welcome to MegaKUMUL</h2>
+          <p className="max-w-md text-muted-foreground">Your AI research & intelligence platform. Ask anything, research deeply, generate code, and more.</p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="w-full max-w-2xl"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="w-full max-w-2xl">
           <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Try one of these prompts:</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {suggestedPrompts.map((prompt, i) => (
-              <motion.button
-                key={prompt}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + i * 0.1 }}
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onSend?.(prompt)}
-                className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-surface-elevated hover:text-foreground hover:glow-primary"
-              >
+              <motion.button key={prompt} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => onSend?.(prompt)} className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-surface-elevated hover:text-foreground hover:glow-primary">
                 <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
                 <span>{prompt}</span>
               </motion.button>
@@ -119,26 +103,13 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
       <div className="mx-auto max-w-3xl space-y-6">
         <AnimatePresence>
           {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
+            <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`flex max-w-[85%] gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 {msg.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-primary glow-primary">
-                    <Zap className="h-4 w-4 text-primary-foreground" />
-                  </div>
+                  <img src={megakumulLogo} alt="AI" className="h-8 w-8 shrink-0 rounded-lg object-cover shadow-[0_0_10px_hsl(195,100%,50%,0.2)]" />
                 )}
                 <div className="flex flex-col gap-1">
-                  <div
-                    className={`rounded-2xl px-4 py-3 ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card border border-border"
-                    }`}
-                  >
+                  <div className={`rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"}`}>
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:text-primary prose-pre:bg-muted prose-pre:border prose-pre:border-border">
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
@@ -152,11 +123,8 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
                   {msg.role === "assistant" && !isLoading && (
                     <div className="flex items-center gap-1 px-1">
                       <CopyButton text={msg.content} />
-                      {msg.model && (
-                        <span className="text-[10px] text-muted-foreground ml-1">
-                          {msg.model}
-                        </span>
-                      )}
+                      <SaveButton content={msg.content} />
+                      {msg.model && <span className="text-[10px] text-muted-foreground ml-1">{msg.model}</span>}
                     </div>
                   )}
                 </div>
@@ -167,9 +135,7 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
 
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-primary glow-primary">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <img src={megakumulLogo} alt="AI" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
             <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3">
               <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
               <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
@@ -179,22 +145,11 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
         )}
 
         {showFollowUps && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="pt-2"
-          >
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="pt-2">
             <p className="mb-3 text-xs font-medium text-muted-foreground">Continue with:</p>
             <div className="flex flex-wrap gap-2">
               {followUpActions.map((action) => (
-                <motion.button
-                  key={action.label}
-                  whileHover={{ scale: 1.04, y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onSend?.(action.prefix)}
-                  className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${action.color}`}
-                >
+                <motion.button key={action.label} whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.96 }} onClick={() => onSend?.(action.prefix)} className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${action.color}`}>
                   <action.icon className="h-3.5 w-3.5" />
                   {action.label}
                 </motion.button>

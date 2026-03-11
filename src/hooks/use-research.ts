@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { streamResearch, parseResearchResponse, ResearchSource } from "@/lib/research-api";
+import { addToHistory } from "@/pages/HistoryPage";
 
 export function useResearch() {
   const [rawContent, setRawContent] = useState("");
@@ -18,6 +19,8 @@ export function useResearch() {
     setIsComplete(false);
     setQuery(searchQuery);
     setError(null);
+
+    addToHistory({ query: searchQuery, source: "research", preview: "" });
 
     let accumulated = "";
 
