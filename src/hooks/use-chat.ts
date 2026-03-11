@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Message } from "@/lib/types";
 import { streamChat } from "@/lib/chat-api";
+import { addToHistory } from "@/pages/HistoryPage";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -17,6 +18,9 @@ export function useChat() {
 
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
+
+    // Add to history
+    addToHistory({ query: content, source: "chat", preview: "" });
 
     let assistantContent = "";
     const assistantId = crypto.randomUUID();

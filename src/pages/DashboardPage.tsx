@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { MessageSquare, Search, Code, FileText, Zap, ArrowRight, Sparkles, Brain, Globe, Shield, Calculator, ImageIcon } from "lucide-react";
+import { MessageSquare, Search, Code, FileText, ArrowRight, Sparkles, Brain, Globe, Shield, Calculator, ImageIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TopNav } from "@/components/TopNav";
 import { useState } from "react";
+import megakumulLogo from "@/assets/megakumul-logo.png";
 
 const features = [
   { icon: MessageSquare, title: "AI Chat", desc: "Conversational intelligence powered by advanced AI models", url: "/chat", gradient: "from-[hsl(195,100%,50%)] to-[hsl(210,100%,60%)]" },
@@ -37,14 +38,14 @@ export default function DashboardPage() {
       <TopNav selectedModel={selectedModel} onModelChange={setSelectedModel} />
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {/* Hero */}
-        <div className="relative min-h-[70vh] w-full overflow-hidden flex items-center justify-center bg-gradient-to-b from-background via-card to-background">
+        <div className="relative min-h-[70vh] w-full overflow-hidden flex items-center justify-center bg-gradient-to-b from-background/80 via-card/60 to-background/80">
           <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(195,100%,50%,0.1),transparent_70%)]" />
           </div>
 
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-20 text-center px-6 py-20">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }} className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-3xl gradient-primary glow-primary">
-              <Zap className="h-12 w-12 text-primary-foreground" />
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }} className="mx-auto mb-8">
+              <img src={megakumulLogo} alt="MegaKUMUL" className="h-24 w-24 mx-auto rounded-3xl object-cover shadow-[0_0_40px_hsl(195,100%,50%,0.3)]" />
             </motion.div>
 
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-4 text-6xl sm:text-7xl font-heading font-bold leading-tight">
