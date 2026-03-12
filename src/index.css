@@ -115,39 +115,45 @@
   }
 }
 
-/* KaTeX Math Rendering */
+/* KaTeX Math Rendering - Clear and Visible */
 .katex {
-  font-size: 1.15em !important;
+  font-size: 1.2em !important;
   font-weight: 400;
+  color: hsl(210, 20%, 95%);
 }
 
 .katex-display {
   margin: 1.5em 0 !important;
-  padding: 1.25em 1.5em;
-  background: hsl(var(--muted) / 0.5);
-  border: 1px solid hsl(var(--border));
+  padding: 1.5em 2em;
+  background: hsl(230, 15%, 10%);
+  border: 1px solid hsl(230, 15%, 20%);
   border-radius: 0.75rem;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
 .katex-display > .katex {
-  font-size: 1.3em !important;
+  font-size: 1.4em !important;
+  font-weight: 500;
 }
 
 .prose .katex-display {
   text-align: center;
 }
 
+/* Inline math - bright and clear */
 .katex:not(.katex-display .katex) {
-  padding: 0.1em 0.2em;
-  color: hsl(195, 100%, 70%);
+  padding: 0.15em 0.3em;
+  color: hsl(195, 100%, 75%);
+  font-weight: 500;
 }
 
+/* Make fraction lines thicker and more visible */
 .katex .frac-line {
-  border-bottom-width: 0.06em !important;
+  border-bottom-width: 0.08em !important;
 }
 
+/* Matrix alignment */
 .katex .mtable .col-align-c > .vlist-t {
   text-align: center;
 }
@@ -156,6 +162,20 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 0.25em;
+}
+
+/* Make numbers extra clear in KaTeX */
+.katex .mord,
+.katex .minner,
+.katex .mop {
+  font-weight: 500;
+}
+
+/* Ensure boxed answers stand out */
+.katex .boxed {
+  border: 2px solid hsl(195, 100%, 60%) !important;
+  padding: 0.3em 0.5em !important;
+  border-radius: 4px;
 }
 
 @keyframes pulse-glow {
@@ -177,3 +197,34 @@
 }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Prose improvements for readability */
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid hsl(230, 15%, 20%);
+  padding: 0.5em 1em;
+  text-align: center;
+}
+
+.prose th {
+  background: hsl(230, 15%, 12%);
+  font-weight: 600;
+}
+
+.prose td {
+  background: hsl(230, 15%, 8%);
+}
+
+.prose blockquote {
+  border-left: 3px solid hsl(195, 100%, 50%);
+  padding-left: 1em;
+  margin: 1em 0;
+  color: hsl(215, 15%, 60%);
+  font-style: italic;
+}

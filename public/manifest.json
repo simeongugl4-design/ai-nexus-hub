@@ -1,0 +1,16 @@
+{
+  "name": "MegaKUMUL AI",
+  "short_name": "MegaKUMUL",
+  "description": "AI Research & Intelligence Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0c14",
+  "theme_color": "#0a0c14",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
