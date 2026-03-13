@@ -8,6 +8,7 @@ import { Code, ArrowRight, Loader2, Copy, Check, RotateCcw } from "lucide-react"
 import { useCodeAssistant } from "@/hooks/use-code-assistant";
 import { TopNav } from "@/components/TopNav";
 import { preprocessLatex } from "@/lib/latex-utils";
+import { FollowUpOptions } from "@/components/FollowUpOptions";
 
 const languages = ["Auto-detect", "Python", "JavaScript", "TypeScript", "Java", "C++", "Rust", "Go", "SQL"];
 const actions = [
@@ -29,6 +30,7 @@ export default function CodeAssistantPage() {
 
   const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!input.trim() || isLoading) return; generate(input.trim(), language, action); };
   const handleCopy = async () => { await navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const handleFollowUp = (prefix: string) => { setInput(prefix); generate(prefix, language, action); };
   const hasResults = content.length > 0 || isLoading;
 
   return (
@@ -73,7 +75,15 @@ export default function CodeAssistantPage() {
             <div className="rounded-2xl border border-border bg-card p-6">
               {error ? <p className="text-destructive">⚠️ {error}</p> : <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:text-[hsl(150,80%,50%)] prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-xl"><ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{preprocessLatex(content)}</ReactMarkdown></div>}
             </div>
-            {!isLoading && <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-card p-2"><textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a follow-up..." rows={1} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} /><button type="submit" disabled={!input.trim()} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[hsl(150,80%,50%)] text-background disabled:opacity-30">Go</button></form>}
+
+            {/* Follow-up options A-F */}
+            {!isLoading && content && <FollowUpOptions type="code" onSelect={handleFollowUp} />}
+
+            {/* Persistent input */}
+            <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-card p-2">
+              <textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a follow-up or new code request..." rows={1} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} />
+              <button type="submit" disabled={!input.trim() || isLoading} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[hsl(150,80%,50%)] text-background disabled:opacity-30">Go</button>
+            </form>
           </div>
         )}
       </div>

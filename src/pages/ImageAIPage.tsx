@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { ImageIcon, ArrowRight, Loader2, RotateCcw, Sparkles, Eye, Download, ZoomIn, ZoomOut } from "lucide-react";
 import { useImageAI } from "@/hooks/use-image-ai";
 import { TopNav } from "@/components/TopNav";
+import { FollowUpOptions } from "@/components/FollowUpOptions";
 
 const actions = [{ id: "generate", label: "Generate Image", icon: Sparkles }, { id: "analyze", label: "Analyze Image", icon: Eye }];
 const suggestions = ["A futuristic cyberpunk cityscape at night with neon lights", "A majestic eagle soaring over snow-capped mountains", "A 3D render of a crystal ball containing a miniature galaxy", "A photorealistic robot hand holding a delicate flower"];
@@ -18,6 +19,7 @@ export default function ImageAIPage() {
 
   const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!input.trim() || isLoading) return; setZoom(1); generate(input.trim(), action); };
   const handleDownload = () => { if (!imageUrl) return; const a = document.createElement("a"); a.href = imageUrl; a.download = `megakumul-image-${Date.now()}.png`; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+  const handleFollowUp = (prefix: string) => { setInput(prefix); setZoom(1); generate(prefix, action); };
   const hasResults = content.length > 0 || imageUrl || isLoading;
 
   return (
@@ -42,7 +44,15 @@ export default function ImageAIPage() {
             {imageUrl && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6"><div className="rounded-2xl border border-border bg-card overflow-hidden"><div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50"><span className="text-xs font-medium text-muted-foreground">Generated Image</span><div className="flex items-center gap-1"><button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} className="p-1.5 text-muted-foreground hover:text-foreground"><ZoomOut className="h-4 w-4" /></button><span className="text-xs text-muted-foreground min-w-[3rem] text-center">{Math.round(zoom * 100)}%</span><button onClick={() => setZoom(z => Math.min(3, z + 0.25))} className="p-1.5 text-muted-foreground hover:text-foreground"><ZoomIn className="h-4 w-4" /></button><button onClick={handleDownload} className="p-1.5 text-muted-foreground hover:text-foreground ml-2"><Download className="h-4 w-4" /></button></div></div><div className="overflow-auto max-h-[600px] flex items-center justify-center p-4 bg-background"><img src={imageUrl} alt="AI Generated" className="rounded-lg transition-transform" style={{ transform: `scale(${zoom})` }} /></div></div></motion.div>}
             {content && !imageUrl && <div className="rounded-2xl border border-border bg-card p-6">{error ? <p className="text-destructive">⚠️ {error}</p> : <div className="prose prose-sm prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>}</div>}
             {error && !content && <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center"><p className="text-destructive mb-2">⚠️ {error}</p></div>}
-            {!isLoading && <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-card p-2"><textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Generate another image..." rows={1} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} /><button type="submit" disabled={!input.trim()} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[hsl(45,90%,55%)] text-background disabled:opacity-30">Go</button></form>}
+
+            {/* Follow-up options A-D */}
+            {!isLoading && (imageUrl || content) && <FollowUpOptions type="image" onSelect={handleFollowUp} />}
+
+            {/* Persistent input */}
+            <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-card p-2">
+              <textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Generate another image or ask a follow-up..." rows={1} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} />
+              <button type="submit" disabled={!input.trim() || isLoading} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[hsl(45,90%,55%)] text-background disabled:opacity-30">Go</button>
+            </form>
           </div>
         )}
       </div>

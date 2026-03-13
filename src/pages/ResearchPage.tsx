@@ -4,12 +4,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Search, ArrowRight, Globe, ExternalLink, BookOpen, Sparkles, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Search, ArrowRight, Globe, ExternalLink, BookOpen, Sparkles, ChevronDown, ChevronUp, Loader2, Plus } from "lucide-react";
 import { useResearch } from "@/hooks/use-research";
 import { TopNav } from "@/components/TopNav";
 import { ResearchSource } from "@/lib/research-api";
 import { DiagramPanel } from "@/components/DiagramPanel";
 import { preprocessLatex } from "@/lib/latex-utils";
+import { FollowUpOptions } from "@/components/FollowUpOptions";
 
 const suggestedQueries = [
   "What are the latest breakthroughs in quantum computing?",
@@ -40,11 +41,14 @@ export default function ResearchPage() {
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("research");
   const [showAllSources, setShowAllSources] = useState(false);
+  const [diagrams, setDiagrams] = useState<string[]>([]);
+  const [diagramCount, setDiagramCount] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); const trimmed = input.trim(); if (!trimmed || isLoading) return; research(trimmed); };
-  const handleSuggest = (q: string) => { setInput(q); research(q); };
-  const handleNewResearch = () => { clear(); setInput(""); setTimeout(() => inputRef.current?.focus(), 100); };
+  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); const trimmed = input.trim(); if (!trimmed || isLoading) return; setDiagrams([]); setDiagramCount(1); research(trimmed); };
+  const handleSuggest = (q: string) => { setInput(q); setDiagrams([]); setDiagramCount(1); research(q); };
+  const handleNewResearch = () => { clear(); setInput(""); setDiagrams([]); setDiagramCount(1); setTimeout(() => inputRef.current?.focus(), 100); };
+  const handleFollowUp = (prefix: string) => { setInput(prefix); setDiagrams([]); setDiagramCount(1); research(prefix); };
 
   const hasResults = content.length > 0 || isLoading;
   const displayedSources = showAllSources ? sources : sources.slice(0, 4);
@@ -58,7 +62,7 @@ export default function ResearchPage() {
             <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-secondary glow-secondary"><BookOpen className="h-10 w-10 text-secondary-foreground" /></motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="text-center mb-10">
               <h1 className="text-4xl font-heading font-bold gradient-text mb-3">Deep Research</h1>
-              <p className="max-w-lg text-muted-foreground">AI-powered research engine with citations.</p>
+              <p className="max-w-lg text-muted-foreground">AI-powered research engine with real-time information and citations.</p>
             </motion.div>
             <motion.form initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} onSubmit={handleSubmit} className="w-full max-w-2xl mb-10">
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 transition-all focus-within:border-secondary/50 focus-within:glow-secondary">
@@ -108,9 +112,32 @@ export default function ResearchPage() {
                 : isLoading ? <div className="flex flex-col items-center py-12 gap-4"><Loader2 className="h-5 w-5 animate-spin text-secondary" /><div className="flex gap-1.5"><span className="h-2 w-2 rounded-full bg-secondary typing-dot" /><span className="h-2 w-2 rounded-full bg-secondary typing-dot" /><span className="h-2 w-2 rounded-full bg-secondary typing-dot" /></div></div> : null}
             </motion.div>
 
-            {isComplete && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mb-6"><h3 className="text-sm font-heading font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-secondary">📊</span> AI Diagram</h3><DiagramPanel query={query} autoGenerate /></motion.div>}
+            {/* Follow-up options A-F */}
+            {isComplete && <FollowUpOptions type="research" onSelect={handleFollowUp} context={query} />}
 
-            {isComplete && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}><form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex items-center gap-2 rounded-xl border border-border bg-card p-2"><Search className="ml-2 h-4 w-4 text-muted-foreground" /><input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a follow-up question..." className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1" /><button type="submit" disabled={!input.trim() || isLoading} className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-30 bg-secondary text-secondary-foreground hover:opacity-90">Research</button></form></motion.div>}
+            {/* Multiple diagrams support */}
+            {isComplete && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-6 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-heading font-semibold text-foreground flex items-center gap-2"><span className="text-secondary">📊</span> AI Diagrams</h3>
+                  <button onClick={() => setDiagramCount(c => c + 1)} className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"><Plus className="h-3 w-3" /> Add Diagram</button>
+                </div>
+                <div className="space-y-4">
+                  {Array.from({ length: diagramCount }).map((_, i) => (
+                    <DiagramPanel key={`diagram-${i}-${query}`} query={i === 0 ? query : `${query} - aspect ${i + 1}`} autoGenerate />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Persistent search bar - always visible */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex items-center gap-2 rounded-xl border border-border bg-card p-2">
+                <Search className="ml-2 h-4 w-4 text-muted-foreground" />
+                <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Continue researching or ask a follow-up question..." className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1" />
+                <button type="submit" disabled={!input.trim() || isLoading} className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-30 bg-secondary text-secondary-foreground hover:opacity-90">Research</button>
+              </form>
+            </motion.div>
           </div>
         )}
       </div>
