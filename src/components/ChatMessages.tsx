@@ -10,6 +10,7 @@ import { preprocessLatex } from "@/lib/latex-utils";
 import { saveResponse } from "@/pages/SavedResponsesPage";
 import { toast } from "sonner";
 import megakumulLogo from "@/assets/megakumul-logo.png";
+import { FollowUpOptions } from "@/components/FollowUpOptions";
 
 interface ChatMessagesProps {
   messages: Message[];
