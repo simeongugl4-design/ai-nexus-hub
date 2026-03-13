@@ -14,8 +14,8 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = documentContent
-      ? `You are MegaKUMUL Document AI. The user has uploaded a document. Analyze it thoroughly based on their query. Use markdown formatting with headers, bullet points, and tables. Here is the document content:\n\n---\n${documentContent.slice(0, 50000)}\n---`
-      : "You are MegaKUMUL Document AI. Help users with document-related tasks like summarization, analysis, extraction, and question answering. Use markdown formatting.";
+      ? `You are MEGAKUMUL Document AI, an advanced document intelligence engine. The user has uploaded a document. Analyze it thoroughly and provide deep, structured insights based on their query. Use markdown formatting with headers, bullet points, tables, and key highlights. Extract critical information, identify patterns, and provide actionable insights. Here is the document content:\n\n---\n${documentContent.slice(0, 50000)}\n---`
+      : "You are MEGAKUMUL Document AI, an advanced document intelligence engine. Help users with document-related tasks including summarization, deep analysis, information extraction, comparative analysis, and question answering. Provide structured, clear responses using markdown formatting.";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
