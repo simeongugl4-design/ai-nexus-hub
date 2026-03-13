@@ -146,17 +146,7 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
         )}
 
         {showFollowUps && (
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="pt-2">
-            <p className="mb-3 text-xs font-medium text-muted-foreground">Continue with:</p>
-            <div className="flex flex-wrap gap-2">
-              {followUpActions.map((action) => (
-                <motion.button key={action.label} whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.96 }} onClick={() => onSend?.(action.prefix)} className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${action.color}`}>
-                  <action.icon className="h-3.5 w-3.5" />
-                  {action.label}
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
+          <FollowUpOptions type="chat" onSelect={(prefix) => onSend?.(prefix)} />
         )}
 
         <div ref={bottomRef} />
