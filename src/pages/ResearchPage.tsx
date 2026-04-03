@@ -45,10 +45,10 @@ export default function ResearchPage() {
   const [diagramCount, setDiagramCount] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); const trimmed = input.trim(); if (!trimmed || isLoading) return; setDiagrams([]); setDiagramCount(1); research(trimmed); };
-  const handleSuggest = (q: string) => { setInput(q); setDiagrams([]); setDiagramCount(1); research(q); };
+  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); const trimmed = input.trim(); if (!trimmed || isLoading) return; setDiagrams([]); setDiagramCount(1); research(trimmed, selectedModel); };
+  const handleSuggest = (q: string) => { setInput(q); setDiagrams([]); setDiagramCount(1); research(q, selectedModel); };
   const handleNewResearch = () => { clear(); setInput(""); setDiagrams([]); setDiagramCount(1); setTimeout(() => inputRef.current?.focus(), 100); };
-  const handleFollowUp = (prefix: string) => { setInput(prefix); setDiagrams([]); setDiagramCount(1); research(prefix); };
+  const handleFollowUp = (prefix: string) => { setInput(prefix); setDiagrams([]); setDiagramCount(1); research(prefix, selectedModel); };
 
   const hasResults = content.length > 0 || isLoading;
   const displayedSources = showAllSources ? sources : sources.slice(0, 4);
