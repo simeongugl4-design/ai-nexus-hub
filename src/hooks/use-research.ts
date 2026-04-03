@@ -11,7 +11,7 @@ export function useResearch() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const research = useCallback(async (searchQuery: string) => {
+  const research = useCallback(async (searchQuery: string, model?: string) => {
     setRawContent("");
     setContent("");
     setSources([]);
@@ -26,6 +26,7 @@ export function useResearch() {
 
     await streamResearch({
       query: searchQuery,
+      model,
       onDelta: (chunk) => {
         accumulated += chunk;
         setRawContent(accumulated);
