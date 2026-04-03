@@ -17,6 +17,8 @@ serve(async (req) => {
       : model === "research" ? "google/gemini-2.5-pro"
       : model === "coding" ? "google/gemini-2.5-flash"
       : model === "expert" ? "google/gemini-2.5-pro"
+      : model === "gpt5" ? "openai/gpt-5"
+      : model === "gpt52" ? "openai/gpt-5.2"
       : "google/gemini-3-flash-preview";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
