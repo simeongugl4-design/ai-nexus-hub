@@ -22,9 +22,9 @@ export default function MathSolverPage() {
   const [diagramCount, setDiagramCount] = useState(1);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!input.trim() || isLoading) return; setLastQuery(input.trim()); setDiagramCount(1); solve(input.trim()); };
+  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!input.trim() || isLoading) return; setLastQuery(input.trim()); setDiagramCount(1); solve(input.trim(), selectedModel); };
   const handleCopy = async () => { await navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  const handleFollowUp = (prefix: string) => { setInput(prefix); setLastQuery(prefix); setDiagramCount(1); solve(prefix); };
+  const handleFollowUp = (prefix: string) => { setInput(prefix); setLastQuery(prefix); setDiagramCount(1); solve(prefix, selectedModel); };
   const hasResults = content.length > 0 || isLoading;
 
   return (

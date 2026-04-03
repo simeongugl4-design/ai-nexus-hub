@@ -121,7 +121,7 @@ export function useMathSolver() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const solve = useCallback(async (prompt: string) => {
+  const solve = useCallback(async (prompt: string, model?: string) => {
     setContent("");
     setIsLoading(true);
     setError(null);
@@ -147,7 +147,7 @@ export function useMathSolver() {
     const MATH_URL = `${supabaseUrl}/functions/v1/mega-math`;
     await readSSEStream({
       url: MATH_URL,
-      body: { prompt },
+      body: { prompt, model },
       onDelta: (chunk) => {
         accumulated += chunk;
         setContent(accumulated);

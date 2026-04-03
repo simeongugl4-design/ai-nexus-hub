@@ -70,11 +70,13 @@ const DEMO_RESEARCH = [
 
 export async function streamResearch({
   query,
+  model,
   onDelta,
   onDone,
   onError,
 }: {
   query: string;
+  model?: string;
   onDelta: (text: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
@@ -100,7 +102,7 @@ export async function streamResearch({
         "Content-Type": "application/json",
         Authorization: `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, model }),
     });
 
     if (!resp.ok) {

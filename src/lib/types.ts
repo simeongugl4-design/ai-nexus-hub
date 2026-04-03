@@ -29,4 +29,6 @@ export const AI_MODELS: AIModel[] = [
   { id: "creative", name: "Creative AI", description: "Creative writing and brainstorming", icon: "✨", speed: 80, accuracy: 85 },
   { id: "coding", name: "Coding AI", description: "Code generation and debugging", icon: "💻", speed: 75, accuracy: 90 },
   { id: "expert", name: "Expert AI", description: "Complex reasoning and analysis", icon: "🧠", speed: 50, accuracy: 98 },
+  { id: "gpt5", name: "GPT-5", description: "OpenAI powerful all-rounder", icon: "🤖", speed: 65, accuracy: 96 },
+  { id: "gpt52", name: "GPT-5.2", description: "OpenAI latest enhanced reasoning", icon: "🚀", speed: 55, accuracy: 99 },
 ];

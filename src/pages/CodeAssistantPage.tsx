@@ -28,9 +28,9 @@ export default function CodeAssistantPage() {
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!input.trim() || isLoading) return; generate(input.trim(), language, action); };
+  const handleSubmit = (e?: React.FormEvent) => { e?.preventDefault(); if (!input.trim() || isLoading) return; generate(input.trim(), language, action, selectedModel); };
   const handleCopy = async () => { await navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  const handleFollowUp = (prefix: string) => { setInput(prefix); generate(prefix, language, action); };
+  const handleFollowUp = (prefix: string) => { setInput(prefix); generate(prefix, language, action, selectedModel); };
   const hasResults = content.length > 0 || isLoading;
 
   return (

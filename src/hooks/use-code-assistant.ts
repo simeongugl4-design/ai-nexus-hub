@@ -76,7 +76,7 @@ export function useCodeAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generate = useCallback(async (prompt: string, language: string, action: string) => {
+  const generate = useCallback(async (prompt: string, language: string, action: string, model?: string) => {
     setContent("");
     setIsLoading(true);
     setError(null);
@@ -102,7 +102,7 @@ export function useCodeAssistant() {
     const CODE_URL = `${supabaseUrl}/functions/v1/mega-code`;
     await readSSEStream({
       url: CODE_URL,
-      body: { prompt, language, action },
+      body: { prompt, language, action, model },
       onDelta: (chunk) => {
         accumulated += chunk;
         setContent(accumulated);
