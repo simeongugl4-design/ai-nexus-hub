@@ -32,6 +32,7 @@ const secondaryItems = [
   { title: "Saved Responses", url: "/saved", icon: Star },
   { title: "History", url: "/history", icon: Clock },
   { title: "Integrations", url: "/integrations", icon: Puzzle },
+  { title: "Pricing", url: "/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

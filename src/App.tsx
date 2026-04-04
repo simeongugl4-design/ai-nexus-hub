@@ -57,6 +57,7 @@ const App = () => (
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
