@@ -18,6 +18,7 @@ import SavedResponsesPage from "./pages/SavedResponsesPage";
 import HistoryPage from "./pages/HistoryPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import SettingsPage from "./pages/SettingsPage";
+import PricingPage from "./pages/PricingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
