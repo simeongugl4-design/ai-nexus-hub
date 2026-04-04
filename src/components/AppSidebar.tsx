@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, Search, FileText, ImageIcon,
-  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator
+  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
