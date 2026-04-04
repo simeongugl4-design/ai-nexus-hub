@@ -1,9 +1,10 @@
 import {
   LayoutDashboard, MessageSquare, Search, FileText, ImageIcon,
-  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard
+  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -38,6 +39,7 @@ const secondaryItems = [
 
 export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
+  const { isTrialActive, trialDaysLeft, isPro, signOut, user } = useAuth();
   const collapsed = state === "collapsed";
 
   return (
@@ -54,6 +56,26 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
+        {/* Trial/Pro badge */}
+        {!collapsed && (
+          <div className="mx-3 mb-2">
+            {isTrialActive ? (
+              <div className="rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-2 text-center">
+                <div className="flex items-center justify-center gap-1 text-xs font-semibold text-secondary">
+                  <Sparkles className="h-3 w-3" /> Pro Trial
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} left</p>
+              </div>
+            ) : isPro ? (
+              <div className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-center">
+                <div className="flex items-center justify-center gap-1 text-xs font-semibold text-primary">
+                  <Sparkles className="h-3 w-3" /> Pro Plan
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -100,7 +122,16 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-2 space-y-1">
+        {user && (
+          <button
+            onClick={signOut}
+            className="flex w-full items-center gap-2 rounded-lg p-2 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            {!collapsed && <span>Sign Out</span>}
+          </button>
+        )}
         <button
           onClick={toggleSidebar}
           className="flex w-full items-center justify-center rounded-lg p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
