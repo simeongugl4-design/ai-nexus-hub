@@ -43,9 +43,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="flex h-screen items-center justify-center text-muted-foreground">Loading...</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  // AUTH DISABLED TEMPORARILY — all routes are public
   return <>{children}</>;
 }
 
