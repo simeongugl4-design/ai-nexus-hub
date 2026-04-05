@@ -48,26 +48,6 @@ export function parseResearchResponse(raw: string): ResearchResult {
   return { content, sources, isComplete: true };
 }
 
-const DEMO_RESEARCH = [
-  "# Research Analysis\n\n",
-  "## Overview\n\nBased on comprehensive analysis of available sources, ",
-  "here are the key findings on this topic:\n\n",
-  "### Key Findings\n\n",
-  "1. **Current State**: The field is rapidly evolving with significant breakthroughs.\n",
-  "2. **Impact**: Multiple industries are being transformed by these developments.\n",
-  "3. **Future Outlook**: Experts predict continued growth and innovation.\n\n",
-  "### Detailed Analysis\n\n",
-  "The research indicates several important trends that are shaping the future of this domain. ",
-  "Multiple peer-reviewed studies confirm the significance of recent developments.\n\n",
-  "### Conclusion\n\n",
-  "This area continues to show promising developments with real-world applications.\n\n",
-  "> **Demo Mode**: Connect a backend for real research with citations.\n\n",
-  "---SOURCES---\n",
-  "[1] Example Research Paper | https://example.com/paper1 | A comprehensive study on the topic\n",
-  "[2] Industry Report 2024 | https://example.com/report | Latest industry analysis and trends\n",
-  "[3] Academic Review | https://example.com/review | Peer-reviewed academic perspectives\n",
-];
-
 export async function streamResearch({
   query,
   model,
@@ -83,16 +63,6 @@ export async function streamResearch({
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey || supabaseUrl === 'undefined') {
-    for (const chunk of DEMO_RESEARCH) {
-      await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
-      onDelta(chunk);
-    }
-    onDone();
-    return;
-  }
-
   const RESEARCH_URL = `${supabaseUrl}/functions/v1/mega-research`;
 
   try {

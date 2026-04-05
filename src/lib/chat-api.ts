@@ -1,22 +1,5 @@
 import { Message } from "./types";
 
-const DEMO_CHAT_RESPONSES = [
-  "# Hello! I'm MegaKUMUL AI 👋\n\n",
-  "I'm your intelligent research & productivity assistant. ",
-  "Here's what I can help you with:\n\n",
-  "## 🔬 Capabilities\n\n",
-  "- **Conversational AI** — Ask me anything and get thoughtful responses\n",
-  "- **Deep Research** — I can analyze topics with citations and sources\n",
-  "- **Code Generation** — Write, debug, and explain code in any language\n",
-  "- **Math Solving** — Step-by-step solutions with LaTeX rendering\n",
-  "- **Document Intelligence** — Upload and analyze documents\n\n",
-  "## 💡 Try asking me:\n\n",
-  "- *\"Explain quantum computing in simple terms\"*\n",
-  "- *\"Write a Python web scraper\"*\n",
-  "- *\"Compare React vs Vue vs Svelte\"*\n\n",
-  "> **Demo Mode**: Connect a backend to get real AI responses.",
-];
-
 export async function streamChat({
   messages,
   model,
@@ -32,17 +15,6 @@ export async function streamChat({
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey || supabaseUrl === 'undefined') {
-    // Demo mode
-    for (const chunk of DEMO_CHAT_RESPONSES) {
-      await new Promise(r => setTimeout(r, 80 + Math.random() * 150));
-      onDelta(chunk);
-    }
-    onDone();
-    return;
-  }
-
   const CHAT_URL = `${supabaseUrl}/functions/v1/mega-chat`;
 
   try {
