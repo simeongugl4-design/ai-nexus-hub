@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +14,6 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     if (action === "analyze") {
-      // Text analysis of an image concept
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -35,6 +33,11 @@ serve(async (req) => {
       if (!response.ok) {
         const t = await response.text();
         console.error("AI error:", response.status, t);
+        if (response.status === 429 || response.status === 402) {
+          return new Response(JSON.stringify({ error: response.status === 429 ? "Rate limit exceeded." : "Usage limit reached." }), {
+            status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ error: "AI service unavailable" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -45,7 +48,7 @@ serve(async (req) => {
       });
     }
 
-    // Image generation using Nano banana
+    // Image generation using premium model
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -53,9 +56,9 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "google/gemini-3-pro-image-preview",
         messages: [
-          { role: "user", content: `Generate a high-quality, realistic, detailed image: ${prompt}` },
+          { role: "user", content: `Generate a high-quality, photorealistic, stunning image with professional lighting and composition: ${prompt}` },
         ],
         modalities: ["image", "text"],
       }),
@@ -84,7 +87,6 @@ serve(async (req) => {
       });
     }
 
-    // Return the base64 image directly
     return new Response(JSON.stringify({ imageUrl: imageData, text }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

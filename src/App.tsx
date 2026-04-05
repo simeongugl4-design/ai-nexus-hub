@@ -15,6 +15,7 @@ import ImageAIPage from "./pages/ImageAIPage";
 import CodeAssistantPage from "./pages/CodeAssistantPage";
 import MathSolverPage from "./pages/MathSolverPage";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
+import DiagramsPage from "./pages/DiagramsPage";
 import SavedResponsesPage from "./pages/SavedResponsesPage";
 import HistoryPage from "./pages/HistoryPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
@@ -73,6 +74,7 @@ const App = () => (
                     <Route path="/image-ai" element={<ImageAIPage />} />
                     <Route path="/code" element={<CodeAssistantPage />} />
                     <Route path="/math" element={<MathSolverPage />} />
+                    <Route path="/diagrams" element={<DiagramsPage />} />
                     <Route path="/knowledge" element={<KnowledgeBasePage />} />
                     <Route path="/saved" element={<SavedResponsesPage />} />
                     <Route path="/history" element={<HistoryPage />} />
