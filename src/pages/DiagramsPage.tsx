@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Box, ArrowRight, Loader2, RotateCcw, Sparkles, Download, ZoomIn, ZoomOut, Layers, Cpu, BookOpen } from "lucide-react";
+import { Box, ArrowRight, Loader2, RotateCcw, Sparkles, Download, ZoomIn, ZoomOut, Layers, Cpu, BookOpen, Heart } from "lucide-react";
 import { TopNav } from "@/components/TopNav";
 import { addToHistory } from "@/pages/HistoryPage";
+import { addToGallery } from "@/lib/gallery";
+import { toast } from "sonner";
 
 const styles = [
   { id: "3d", label: "3D Render", icon: Box, desc: "Photorealistic 3D with lighting & shadows" },
@@ -203,6 +205,7 @@ export default function DiagramsPage() {
                       <span className="text-xs text-muted-foreground min-w-[3rem] text-center">{Math.round(zoom * 100)}%</span>
                       <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} className="p-1.5 text-muted-foreground hover:text-foreground"><ZoomIn className="h-4 w-4" /></button>
                       <button onClick={handleDownload} className="p-1.5 text-muted-foreground hover:text-foreground ml-2"><Download className="h-4 w-4" /></button>
+                      <button onClick={() => { if (imageUrl) { addToGallery({ imageUrl, prompt: input, source: "diagram", style }); toast.success("Saved to Gallery!"); } }} className="p-1.5 text-muted-foreground hover:text-primary ml-1" title="Save to Gallery"><Heart className="h-4 w-4" /></button>
                     </div>
                   </div>
                   <div className="overflow-auto max-h-[600px] flex items-center justify-center p-4 bg-background">

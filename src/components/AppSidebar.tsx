@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, Search, FileText, ImageIcon,
-  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles, Box
+  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles, Box, GalleryHorizontalEnd
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -27,6 +27,7 @@ const mainItems = [
   { title: "Code Assistant", url: "/code", icon: Code },
   { title: "Math Solver", url: "/math", icon: Calculator },
   { title: "3D Diagrams", url: "/diagrams", icon: Box },
+  { title: "Gallery", url: "/gallery", icon: GalleryHorizontalEnd },
 ];
 
 const secondaryItems = [
