@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Box, ArrowRight, Loader2, RotateCcw, Sparkles, Download, ZoomIn, ZoomOut, Layers, Cpu, BookOpen } from "lucide-react";
+import { Box, ArrowRight, Loader2, RotateCcw, Sparkles, Download, ZoomIn, ZoomOut, Layers, Cpu, BookOpen, Heart } from "lucide-react";
 import { TopNav } from "@/components/TopNav";
 import { addToHistory } from "@/pages/HistoryPage";
+import { addToGallery } from "@/lib/gallery";
+import { toast } from "sonner";
 
 const styles = [
   { id: "3d", label: "3D Render", icon: Box, desc: "Photorealistic 3D with lighting & shadows" },
