@@ -27,6 +27,7 @@ const mainItems = [
   { title: "Code Assistant", url: "/code", icon: Code },
   { title: "Math Solver", url: "/math", icon: Calculator },
   { title: "3D Diagrams", url: "/diagrams", icon: Box },
+  { title: "Gallery", url: "/gallery", icon: GalleryHorizontalEnd },
 ];
 
 const secondaryItems = [
