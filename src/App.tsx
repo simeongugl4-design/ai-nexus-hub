@@ -16,6 +16,7 @@ import CodeAssistantPage from "./pages/CodeAssistantPage";
 import MathSolverPage from "./pages/MathSolverPage";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import DiagramsPage from "./pages/DiagramsPage";
+import GalleryPage from "./pages/GalleryPage";
 import SavedResponsesPage from "./pages/SavedResponsesPage";
 import HistoryPage from "./pages/HistoryPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
