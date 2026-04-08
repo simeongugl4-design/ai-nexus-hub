@@ -52,7 +52,7 @@ export async function getMessages(conversationId: string): Promise<DBMessage[]> 
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as DBMessage[];
 }
 
 export async function saveMessage(conversationId: string, role: string, content: string, model?: string) {
