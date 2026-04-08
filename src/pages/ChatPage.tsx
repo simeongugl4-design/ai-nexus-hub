@@ -4,9 +4,22 @@ import { ChatMessages } from "@/components/ChatMessages";
 import { ChatInput } from "@/components/ChatInput";
 import { ToolsPanel } from "@/components/ToolsPanel";
 import { TopNav } from "@/components/TopNav";
+import { ConversationList } from "@/components/ConversationList";
 
 export default function ChatPage() {
-  const { messages, isLoading, sendMessage, selectedModel, setSelectedModel } = useChat();
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    selectedModel,
+    setSelectedModel,
+    conversations,
+    activeConversationId,
+    newChat,
+    selectConversation,
+    deleteConversation,
+    renameConversation,
+  } = useChat();
   const [inputPrefill, setInputPrefill] = useState("");
   const [prefillKey, setPrefillKey] = useState(0);
 
@@ -23,6 +36,14 @@ export default function ChatPage() {
     <div className="flex h-screen flex-col">
       <TopNav selectedModel={selectedModel} onModelChange={setSelectedModel} />
       <div className="flex flex-1 overflow-hidden">
+        <ConversationList
+          conversations={conversations}
+          activeId={activeConversationId}
+          onSelect={selectConversation}
+          onNew={newChat}
+          onDelete={deleteConversation}
+          onRename={renameConversation}
+        />
         <div className="flex flex-1 flex-col">
           <ChatMessages messages={messages} isLoading={isLoading} onSend={handleFollowUp} />
           <ChatInput

@@ -1,73 +1,181 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Message } from "@/lib/types";
 import { streamChat } from "@/lib/chat-api";
 import { addToHistory } from "@/pages/HistoryPage";
+import {
+  Conversation,
+  createConversation,
+  getConversations,
+  getMessages,
+  saveMessage,
+  updateConversationTitle,
+  deleteConversation as deleteConv,
+  generateTitle,
+} from "@/lib/conversations";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("creative");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
 
-  const sendMessage = useCallback(async (content: string) => {
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content,
-      timestamp: new Date(),
-    };
+  // Load conversations on mount
+  useEffect(() => {
+    getConversations()
+      .then((convs) => {
+        setConversations(convs);
+        setConversationsLoaded(true);
+      })
+      .catch(() => setConversationsLoaded(true));
+  }, []);
 
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
+  // Load messages when active conversation changes
+  useEffect(() => {
+    if (!activeConversationId) {
+      setMessages([]);
+      return;
+    }
+    getMessages(activeConversationId).then((dbMsgs) => {
+      setMessages(
+        dbMsgs.map((m) => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          timestamp: new Date(m.created_at),
+          model: m.model ?? undefined,
+        }))
+      );
+    });
+  }, [activeConversationId]);
 
-    // Add to history
-    addToHistory({ query: content, source: "chat", preview: "" });
+  const sendMessage = useCallback(
+    async (content: string) => {
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content,
+        timestamp: new Date(),
+      };
 
-    let assistantContent = "";
-    const assistantId = crypto.randomUUID();
+      setMessages((prev) => [...prev, userMsg]);
+      setIsLoading(true);
 
-    const allMessages = [...messages, userMsg];
+      addToHistory({ query: content, source: "chat", preview: "" });
 
-    await streamChat({
-      messages: allMessages,
-      model: selectedModel,
-      onDelta: (chunk) => {
-        assistantContent += chunk;
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === "assistant" && last.id === assistantId) {
-            return prev.map((m) =>
-              m.id === assistantId ? { ...m, content: assistantContent } : m
-            );
+      // Create conversation if none active
+      let convId = activeConversationId;
+      if (!convId) {
+        try {
+          const conv = await createConversation(generateTitle(content), selectedModel);
+          convId = conv.id;
+          setActiveConversationId(convId);
+          setConversations((prev) => [conv, ...prev]);
+        } catch {
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Save user message to DB
+      await saveMessage(convId, "user", content);
+
+      let assistantContent = "";
+      const assistantId = crypto.randomUUID();
+      const allMessages = [...messages, userMsg];
+
+      await streamChat({
+        messages: allMessages,
+        model: selectedModel,
+        onDelta: (chunk) => {
+          assistantContent += chunk;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant" && last.id === assistantId) {
+              return prev.map((m) =>
+                m.id === assistantId ? { ...m, content: assistantContent } : m
+              );
+            }
+            return [
+              ...prev,
+              {
+                id: assistantId,
+                role: "assistant",
+                content: assistantContent,
+                timestamp: new Date(),
+                model: selectedModel,
+              },
+            ];
+          });
+        },
+        onDone: async () => {
+          setIsLoading(false);
+          // Save assistant message to DB
+          if (convId && assistantContent) {
+            await saveMessage(convId, "assistant", assistantContent, selectedModel);
           }
-          return [
+        },
+        onError: (error) => {
+          setIsLoading(false);
+          setMessages((prev) => [
             ...prev,
             {
-              id: assistantId,
+              id: crypto.randomUUID(),
               role: "assistant",
-              content: assistantContent,
+              content: `⚠️ ${error}`,
               timestamp: new Date(),
-              model: selectedModel,
             },
-          ];
-        });
-      },
-      onDone: () => setIsLoading(false),
-      onError: (error) => {
-        setIsLoading(false);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: `⚠️ ${error}`,
-            timestamp: new Date(),
-          },
-        ]);
-      },
-    });
-  }, [messages, selectedModel]);
+          ]);
+        },
+      });
+    },
+    [messages, selectedModel, activeConversationId]
+  );
+
+  const newChat = useCallback(() => {
+    setActiveConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const selectConversation = useCallback((id: string) => {
+    setActiveConversationId(id);
+  }, []);
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await deleteConv(id);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+        setMessages([]);
+      }
+    },
+    [activeConversationId]
+  );
+
+  const renameConversation = useCallback(async (id: string, title: string) => {
+    await updateConversationTitle(id, title);
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title } : c))
+    );
+  }, []);
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
-  return { messages, isLoading, sendMessage, clearMessages, selectedModel, setSelectedModel };
+  return {
+    messages,
+    isLoading,
+    sendMessage,
+    clearMessages,
+    selectedModel,
+    setSelectedModel,
+    conversations,
+    activeConversationId,
+    newChat,
+    selectConversation,
+    deleteConversation,
+    renameConversation,
+    conversationsLoaded,
+  };
 }
