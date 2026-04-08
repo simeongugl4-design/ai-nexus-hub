@@ -33,7 +33,7 @@ export async function getSessions(type: string): Promise<AISession[]> {
 export async function createSession(type: string, title: string, model: string, metadata?: Record<string, unknown>): Promise<AISession> {
   const { data, error } = await supabase
     .from("ai_sessions")
-    .insert({ type, title, model, metadata: metadata ?? {} })
+    .insert({ type, title, model, metadata: metadata ?? {} } as any)
     .select()
     .single();
   if (error) throw error;
