@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_session_entries: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          query: string
+          response: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          query: string
+          response?: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          query?: string
+          response?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_session_entries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          model: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          model?: string
+          title?: string
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          model?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
