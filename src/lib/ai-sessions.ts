@@ -64,7 +64,7 @@ export async function saveSessionEntry(sessionId: string, query: string, respons
     query,
     response,
     metadata: metadata ?? {},
-  });
+  } as any);
   await supabase.from("ai_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
 }
 
