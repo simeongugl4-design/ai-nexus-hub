@@ -28,7 +28,10 @@ export function useChat() {
         setConversations(convs);
         setConversationsLoaded(true);
       })
-      .catch(() => setConversationsLoaded(true));
+      .catch((err) => {
+        console.error("Failed to load conversations:", err);
+        setConversationsLoaded(true);
+      });
   }, []);
 
   // Load messages when active conversation changes
