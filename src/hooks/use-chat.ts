@@ -23,12 +23,19 @@ export function useChat() {
 
   // Load conversations on mount
   useEffect(() => {
+    let cancelled = false;
     getConversations()
       .then((convs) => {
-        setConversations(convs);
-        setConversationsLoaded(true);
+        if (!cancelled) {
+          setConversations(convs);
+          setConversationsLoaded(true);
+        }
       })
-      .catch(() => setConversationsLoaded(true));
+      .catch((err) => {
+        console.error("Failed to load conversations:", err);
+        if (!cancelled) setConversationsLoaded(true);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   // Load messages when active conversation changes
