@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, Paperclip, Sparkles, Code, Languages, FileSearch, X } from "lucide-react";
+import { Send, Mic, Paperclip, Sparkles, Code, Languages, FileSearch, X, Camera as CameraIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { hapticTap, hapticSelection, takePhoto } from "@/lib/native";
+import { toast } from "sonner";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -38,8 +40,19 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
+    hapticTap("medium");
     onSend(trimmed);
     setInput("");
+  };
+
+  const handleCamera = async () => {
+    hapticSelection();
+    const dataUrl = await takePhoto();
+    if (dataUrl) {
+      toast.success("Image captured — describe what you'd like to know");
+      setInput((p) => (p ? p + "\n\n[image attached]" : "Analyze this image: "));
+      textareaRef.current?.focus();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -71,6 +84,9 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
         </div>
 
         <div className="flex items-end gap-2 rounded-2xl border border-border bg-input p-2 transition-colors focus-within:border-primary/50 focus-within:glow-primary">
+          <button onClick={handleCamera} title="Take photo" className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <CameraIcon className="h-4 w-4" />
+          </button>
           <button className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <Paperclip className="h-4 w-4" />
           </button>

@@ -14,22 +14,26 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = documentContent
-      ? `You are MEGAKUMUL Document AI, an advanced document intelligence engine. The user has uploaded a document. Analyze it thoroughly and provide deep, structured insights based on their query. Use markdown formatting with headers, bullet points, tables, and key highlights. Extract critical information, identify patterns, and provide actionable insights. Here is the document content:\n\n---\n${documentContent.slice(0, 50000)}\n---`
-      : "You are MEGAKUMUL Document AI, an advanced document intelligence engine. Help users with document-related tasks including summarization, deep analysis, information extraction, comparative analysis, and question answering. Provide structured, clear responses using markdown formatting.";
+      ? `You are MEGAKUMUL DOCUMENT ULTRA — an elite document intelligence engine combining the analytical depth of a McKinsey consultant, the precision of a forensic auditor, and the synthesis power of a top research librarian. The user has uploaded a document. Read it with extreme care, then deliver:
+- A crisp executive summary (3–5 sentences capturing the essence).
+- Structured deep analysis with ## sections covering: key claims, supporting evidence, methodology/quality assessment, gaps and contradictions, implications, and risks.
+- Tables for comparisons, numbered lists for sequences, **bold** for critical terms.
+- Direct quotes (in > blockquotes) from the document for any specific claim you reference.
+- A "Key Takeaways" section and a "Questions This Raises" section at the end.
+Never invent content not in the document. If the user's question can't be answered from the doc, say so explicitly and offer the closest related insight.\n\n---DOCUMENT---\n${documentContent.slice(0, 80000)}\n---END DOCUMENT---`
+      : `You are MEGAKUMUL DOCUMENT ULTRA — an elite document intelligence engine. Help with summarization, structural analysis, comparative reading, information extraction, drafting, and Q&A. Always produce structured markdown with executive summary, deep analysis sections, tables, and a key-takeaways block.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3.1-pro-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt },
         ],
         stream: true,
+        reasoning: { effort: "medium" },
       }),
     });
 

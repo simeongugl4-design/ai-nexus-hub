@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Message } from "@/lib/types";
 import { streamChat } from "@/lib/chat-api";
+import { hapticSuccess, hapticError } from "@/lib/native";
 import { addToHistory } from "@/pages/HistoryPage";
 import {
   Conversation,
@@ -114,13 +115,14 @@ export function useChat() {
         },
         onDone: async () => {
           setIsLoading(false);
-          // Save assistant message to DB
+          hapticSuccess();
           if (convId && assistantContent) {
             await saveMessage(convId, "assistant", assistantContent, selectedModel);
           }
         },
         onError: (error) => {
           setIsLoading(false);
+          hapticError();
           setMessages((prev) => [
             ...prev,
             {

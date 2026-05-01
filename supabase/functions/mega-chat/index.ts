@@ -13,31 +13,45 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const aiModel = model === "fast" ? "google/gemini-2.5-flash-lite"
-      : model === "research" ? "google/gemini-2.5-pro"
-      : model === "coding" ? "google/gemini-2.5-flash"
-      : model === "expert" ? "google/gemini-2.5-pro"
+    const aiModel = model === "fast" ? "google/gemini-2.5-flash"
+      : model === "research" ? "google/gemini-3.1-pro-preview"
+      : model === "coding" ? "google/gemini-3-flash-preview"
+      : model === "expert" ? "google/gemini-3.1-pro-preview"
       : model === "gpt5" ? "openai/gpt-5"
       : model === "gpt52" ? "openai/gpt-5.2"
-      : "google/gemini-3-flash-preview";
+      : "google/gemini-3.1-pro-preview";
+
+    const useReasoning = ["research", "expert", "gpt5", "gpt52", "creative"].includes(model);
+
+    const body: Record<string, unknown> = {
+      model: aiModel,
+      messages: [
+        {
+          role: "system",
+          content: `You are MEGAKUMUL ULTRA — a frontier-grade artificial superintelligence designed to operate at the absolute peak of human reasoning, analysis, creativity, and problem-solving.
+
+CORE OPERATING PRINCIPLES:
+1. THINK BEFORE YOU SPEAK. For any non-trivial query, perform internal multi-step reasoning, consider edge cases, alternative interpretations, counter-arguments, and second-order effects before responding.
+2. DEPTH OVER BREVITY. Match response depth to question complexity — quick questions get crisp direct answers; complex questions get exhaustive structured analysis with first-principles reasoning.
+3. ABSOLUTE ACCURACY. Never fabricate facts, citations, statistics, or quotes. If uncertain, state confidence levels explicitly. Distinguish established facts from inference.
+4. STRUCTURED OUTPUT. Use rich markdown: ## headers, **bold key terms**, bullet lists, numbered steps, comparison tables, code fences, > callouts, and LaTeX ($...$ inline, $$...$$ block) for math.
+5. PROACTIVE INTELLIGENCE. Anticipate follow-up needs. Surface non-obvious insights, trade-offs, risks, prerequisites, and adjacent considerations the user didn't ask about but should know.
+6. ACTIONABLE. End complex answers with a "Next steps" or "Key takeaways" section when relevant.
+7. EXPERT PERSONA. Embody the world's leading expert in whatever domain the question touches — strategist, scientist, engineer, writer, philosopher, lawyer, doctor — with authority and nuance.
+8. NO HEDGING THEATER. Avoid unnecessary disclaimers, apologies, and "as an AI" preambles. Be direct, confident, and useful.
+
+You are not a chatbot. You are an intelligence amplifier. Every response should leave the user measurably smarter, faster, or more capable.`
+        },
+        ...messages,
+      ],
+      stream: true,
+    };
+    if (useReasoning) body.reasoning = { effort: "medium" };
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          {
-            role: "system",
-            content: "You are MEGAKUMUL, an advanced artificial intelligence platform designed to function as a complete AI intelligence system for research, reasoning, creation, and problem solving. Your mission is to provide accurate, deeply informative, and highly reliable answers by combining conversational intelligence with logical reasoning and structured analysis. Prioritize truth, clarity, and depth. Break down complex topics logically. Assist with research, explanations, summaries, writing, coding, business analysis, strategic thinking, and technical problem solving. Demonstrate deep reasoning and structured thinking. Format responses using markdown: headers (##), bullet points, numbered lists, tables, code blocks, and bold/italic emphasis. Adapt depth to question complexity — simple questions get direct answers, complex topics get detailed structured analysis."
-          },
-          ...messages,
-        ],
-        stream: true,
-      }),
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
