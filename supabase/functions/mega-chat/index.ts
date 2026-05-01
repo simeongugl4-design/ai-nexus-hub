@@ -13,7 +13,15 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const aiModel = model === "fast" ? "google/gemini-2.5-flash"
+    // Detect multimodal (image) content in any user message
+    const hasImage = Array.isArray(messages) && messages.some((m: { content: unknown }) =>
+      Array.isArray(m?.content) && (m.content as Array<{ type?: string }>).some((p) => p?.type === "image_url")
+    );
+
+    // Vision-capable models for image inputs; otherwise use the user's selection
+    const aiModel = hasImage
+      ? (model === "gpt5" || model === "gpt52" ? "openai/gpt-5" : "google/gemini-2.5-pro")
+      : model === "fast" ? "google/gemini-2.5-flash"
       : model === "research" ? "google/gemini-3.1-pro-preview"
       : model === "coding" ? "google/gemini-3-flash-preview"
       : model === "expert" ? "google/gemini-3.1-pro-preview"
@@ -21,7 +29,7 @@ serve(async (req) => {
       : model === "gpt52" ? "openai/gpt-5.2"
       : "google/gemini-3.1-pro-preview";
 
-    const useReasoning = ["research", "expert", "gpt5", "gpt52", "creative"].includes(model);
+    const useReasoning = !hasImage && ["research", "expert", "gpt5", "gpt52", "creative"].includes(model);
 
     const body: Record<string, unknown> = {
       model: aiModel,
