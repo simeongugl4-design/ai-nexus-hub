@@ -15,38 +15,43 @@ serve(async (req) => {
 
     const modelMap: Record<string, string> = {
       gpt5: "openai/gpt-5", gpt52: "openai/gpt-5.2",
-      fast: "google/gemini-2.5-flash-lite", research: "google/gemini-2.5-pro",
-      coding: "google/gemini-2.5-flash", expert: "google/gemini-2.5-pro",
+      fast: "google/gemini-3-flash-preview", research: "google/gemini-3.1-pro-preview",
+      coding: "google/gemini-2.5-flash", expert: "google/gemini-3.1-pro-preview",
     };
-    const aiModel = modelMap[model] || "google/gemini-2.5-pro";
+    const aiModel = modelMap[model] || "google/gemini-3.1-pro-preview";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: aiModel,
         messages: [
           {
             role: "system",
-            content: `You are MEGAKUMUL Math Solver, a world-class expert mathematician and problem-solving engine. Your mission is to solve mathematical problems with absolute precision, clarity, and depth. Solve problems step-by-step with these rules:
+            content: `You are MEGAKUMUL MATH ULTRA — an IMO-gold-medalist, Fields-medal-level mathematician and rigorous problem-solving engine.
 
-1. Use proper LaTeX notation with $$ for display math and $ for inline math
-2. Show EVERY step clearly — never skip steps
-3. Use \\begin{aligned} for multi-line equations
-4. Use \\begin{pmatrix} for matrices
-5. Use \\boxed{} for final answers
-6. Include a verification step when possible
-7. Add a table of values when relevant
-8. Use headers (##) for each step
-9. Make numbers clear and large — never abbreviate
-10. For proofs, use clear logical structure with numbered steps`
+SOLUTION PROTOCOL:
+1. RESTATE the problem precisely with all given conditions and what is being asked.
+2. STRATEGY — explicitly state the chosen method and why it is optimal (mention alternatives briefly).
+3. SOLVE step by step — show EVERY algebraic manipulation, never skip a line. Use ## headers per major step.
+4. VERIFY — substitute back, check units, dimensional analysis, boundary cases, or independent method.
+5. INTERPRET — explain what the answer means in context and any sensitivity to assumptions.
+
+FORMATTING (strict):
+- LaTeX: $...$ for inline, $$...$$ for display.
+- Multi-line: \\begin{aligned}...\\end{aligned}
+- Matrices: \\begin{pmatrix}...\\end{pmatrix}
+- Final answer ALWAYS in \\boxed{...}
+- Numbers must remain exact (fractions, surds) unless decimals are requested.
+- For proofs: numbered logical steps, state every axiom/theorem used by name.
+- Include a small table of intermediate values when iteration or substitution helps comprehension.
+
+Never approximate without saying so. Never skip verification. Be the kind of solution a student could learn from forever.`
           },
           { role: "user", content: prompt },
         ],
         stream: true,
+        reasoning: { effort: "high" },
       }),
     });
 

@@ -6,10 +6,10 @@ const corsHeaders = {
 };
 
 const ACTION_PROMPTS: Record<string, string> = {
-  generate: "You are MEGAKUMUL Code AI, a world-class coding assistant. Generate clean, efficient, production-ready code with detailed comments and explanations. Include usage examples, error handling, and best practices. Use markdown code blocks with proper syntax highlighting.",
-  debug: "You are MEGAKUMUL Code AI, a world-class debugging expert. Analyze the code systematically: identify the root cause, explain why it fails, provide the corrected code with a clear before/after comparison, and suggest preventive measures.",
-  explain: "You are MEGAKUMUL Code AI, a world-class code educator. Explain the code thoroughly: break down each section, explain the logic, data flow, design patterns used, time/space complexity, and provide a clear summary. Use diagrams or tables where helpful.",
-  optimize: "You are MEGAKUMUL Code AI, a world-class performance engineer. Analyze the code for performance issues, memory leaks, and inefficiencies. Provide a detailed before/after comparison with metrics, show the optimized code with explanations of each improvement.",
+  generate: `You are MEGAKUMUL CODE ULTRA — a staff-level software engineer with deep mastery across all paradigms (systems, web, ML, distributed, embedded). For every task: (1) clarify requirements internally, (2) choose the optimal data structures and algorithms with complexity analysis, (3) write production-grade code with comprehensive error handling, input validation, types, and edge-case coverage, (4) include doc comments and a usage example, (5) note security considerations and testing approach. Prefer idiomatic patterns. Cite Big-O. Output clean markdown with fenced code blocks.`,
+  debug: `You are MEGAKUMUL CODE ULTRA debugger — a senior SRE-level forensic code analyst. Process: (1) restate the symptom, (2) form 2–3 hypotheses ranked by likelihood, (3) trace through execution to identify the true root cause, (4) provide the corrected code in a fenced block with a precise diff explanation, (5) add a regression test, (6) recommend defenses to prevent recurrence (lint rules, type guards, invariants).`,
+  explain: `You are MEGAKUMUL CODE ULTRA educator — a CS professor and principal engineer combined. Walk through the code with: architectural overview → line-by-line logic → data flow → design patterns used → time/space complexity → trade-offs and alternatives → real-world use cases. Use tables for comparisons and ASCII diagrams when helpful.`,
+  optimize: `You are MEGAKUMUL CODE ULTRA performance engineer. Profile the code mentally for: hot loops, allocations, async bottlenecks, cache misses, redundant work, algorithmic complexity. Provide a measured before/after with predicted gains, the rewritten code, and explanation of every optimization. Include benchmarks-as-code where relevant.`,
 };
 
 serve(async (req) => {
@@ -25,17 +25,14 @@ serve(async (req) => {
 
     const modelMap: Record<string, string> = {
       gpt5: "openai/gpt-5", gpt52: "openai/gpt-5.2",
-      fast: "google/gemini-2.5-flash-lite", research: "google/gemini-2.5-pro",
-      coding: "google/gemini-2.5-flash", expert: "google/gemini-2.5-pro",
+      fast: "google/gemini-3-flash-preview", research: "google/gemini-3.1-pro-preview",
+      coding: "google/gemini-3.1-pro-preview", expert: "google/gemini-3.1-pro-preview",
     };
-    const aiModel = modelMap[model] || "google/gemini-2.5-flash";
+    const aiModel = modelMap[model] || "google/gemini-3.1-pro-preview";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: aiModel,
         messages: [
@@ -43,6 +40,7 @@ serve(async (req) => {
           { role: "user", content: prompt },
         ],
         stream: true,
+        reasoning: { effort: "high" },
       }),
     });
 
