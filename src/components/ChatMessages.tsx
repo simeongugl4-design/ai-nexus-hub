@@ -111,6 +111,13 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
                 )}
                 <div className="flex flex-col gap-1">
                   <div className={`rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"}`}>
+                    {msg.role === "user" && msg.imageUrl && (
+                      <img
+                        src={msg.imageUrl}
+                        alt="attachment"
+                        className="mb-2 max-h-64 w-full rounded-lg object-cover border border-primary-foreground/20"
+                      />
+                    )}
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:text-primary prose-pre:bg-muted prose-pre:border prose-pre:border-border">
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
@@ -118,7 +125,7 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
                         </ReactMarkdown>
                       </div>
                     ) : (
-                      <p className="text-sm">{msg.content}</p>
+                      msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     )}
                   </div>
                   {msg.role === "assistant" && !isLoading && (

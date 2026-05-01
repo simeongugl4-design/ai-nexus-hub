@@ -1,5 +1,15 @@
 import { Message } from "./types";
 
+type OutMsg =
+  | { role: "user" | "assistant"; content: string }
+  | {
+      role: "user";
+      content: Array<
+        | { type: "text"; text: string }
+        | { type: "image_url"; image_url: { url: string } }
+      >;
+    };
+
 export async function streamChat({
   messages,
   model,
@@ -7,7 +17,7 @@ export async function streamChat({
   onDone,
   onError,
 }: {
-  messages: Pick<Message, "role" | "content">[];
+  messages: (Pick<Message, "role" | "content"> & { imageUrl?: string })[];
   model: string;
   onDelta: (text: string) => void;
   onDone: () => void;
@@ -17,6 +27,20 @@ export async function streamChat({
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const CHAT_URL = `${supabaseUrl}/functions/v1/mega-chat`;
 
+  // Convert messages: if a user message has an imageUrl, send multimodal content array
+  const outMessages: OutMsg[] = messages.map((m) => {
+    if (m.role === "user" && m.imageUrl) {
+      return {
+        role: "user",
+        content: [
+          { type: "text", text: m.content || "Analyze this image." },
+          { type: "image_url", image_url: { url: m.imageUrl } },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+
   try {
     const resp = await fetch(CHAT_URL, {
       method: "POST",
@@ -24,10 +48,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
-        model,
-      }),
+      body: JSON.stringify({ messages: outMessages, model }),
     });
 
     if (!resp.ok) {
@@ -35,7 +56,6 @@ export async function streamChat({
       onError(data.error || `Error: ${resp.status}`);
       return;
     }
-
     if (!resp.body) {
       onError("No response body");
       return;

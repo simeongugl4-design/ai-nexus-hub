@@ -43,30 +43,38 @@ export function useChat() {
     }
     getMessages(activeConversationId).then((dbMsgs) => {
       setMessages(
-        dbMsgs.map((m) => ({
-          id: m.id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          timestamp: new Date(m.created_at),
-          model: m.model ?? undefined,
-        }))
+        dbMsgs.map((m) => {
+          // Extract embedded image from persisted markdown (data URL)
+          const match = m.content.match(/!\[attached\]\((data:image\/[^)]+)\)/);
+          const imageUrl = match?.[1];
+          const cleanContent = imageUrl ? m.content.replace(match![0], "").trim() : m.content;
+          return {
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: cleanContent,
+            timestamp: new Date(m.created_at),
+            model: m.model ?? undefined,
+            imageUrl,
+          };
+        })
       );
     });
   }, [activeConversationId]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, imageUrl?: string) => {
       const userMsg: Message = {
         id: crypto.randomUUID(),
         role: "user",
         content,
         timestamp: new Date(),
+        imageUrl,
       };
 
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
-      addToHistory({ query: content, source: "chat", preview: "" });
+      addToHistory({ query: content, source: "chat", preview: imageUrl ? "[image]" : "" });
 
       // Create conversation if none active
       let convId = activeConversationId;
@@ -82,8 +90,9 @@ export function useChat() {
         }
       }
 
-      // Save user message to DB
-      await saveMessage(convId, "user", content);
+      // Persist user message — embed image as markdown so it survives reload
+      const persisted = imageUrl ? `${content}\n\n![attached](${imageUrl})` : content;
+      await saveMessage(convId, "user", persisted);
 
       let assistantContent = "";
       const assistantId = crypto.randomUUID();
