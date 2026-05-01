@@ -5,6 +5,7 @@ export type Message = {
   timestamp: Date;
   model?: string;
   mode?: "answer" | "research";
+  imageUrl?: string; // data URL of attached image (user messages)
 };
 
 export type FollowUpAction = {
