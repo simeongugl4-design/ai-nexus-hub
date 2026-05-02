@@ -46,7 +46,7 @@ export default function ChatPage() {
           onRename={renameConversation}
         />
         <div className="flex flex-1 flex-col">
-          <ChatMessages messages={messages} isLoading={isLoading} onSend={handleFollowUp} />
+          <ChatMessages messages={messages} isLoading={isLoading} onSend={handleFollowUp} vision={vision} />
           <ChatInput
             key={prefillKey}
             onSend={sendMessage}
