@@ -59,7 +59,7 @@ function SaveButton({ content }: { content: string }) {
   );
 }
 
-export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
