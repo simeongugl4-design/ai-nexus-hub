@@ -44,17 +44,23 @@ export function useChat() {
     getMessages(activeConversationId).then((dbMsgs) => {
       setMessages(
         dbMsgs.map((m) => {
-          // Extract embedded image from persisted markdown (data URL)
-          const match = m.content.match(/!\[attached\]\((data:image\/[^)]+)\)/);
-          const imageUrl = match?.[1];
-          const cleanContent = imageUrl ? m.content.replace(match![0], "").trim() : m.content;
+          // Extract embedded images from persisted markdown (data URLs)
+          const imageUrls: string[] = [];
+          const cleanContent = m.content.replace(
+            /!\[attached\]\((data:image\/[^)]+)\)/g,
+            (_full, url: string) => {
+              imageUrls.push(url);
+              return "";
+            }
+          ).trim();
           return {
             id: m.id,
             role: m.role as "user" | "assistant",
             content: cleanContent,
             timestamp: new Date(m.created_at),
             model: m.model ?? undefined,
-            imageUrl,
+            imageUrl: imageUrls[0],
+            imageUrls: imageUrls.length ? imageUrls : undefined,
           };
         })
       );
@@ -62,19 +68,20 @@ export function useChat() {
   }, [activeConversationId]);
 
   const sendMessage = useCallback(
-    async (content: string, imageUrl?: string) => {
+    async (content: string, imageUrls?: string[]) => {
       const userMsg: Message = {
         id: crypto.randomUUID(),
         role: "user",
         content,
         timestamp: new Date(),
-        imageUrl,
+        imageUrl: imageUrls?.[0],
+        imageUrls,
       };
 
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
-      addToHistory({ query: content, source: "chat", preview: imageUrl ? "[image]" : "" });
+      addToHistory({ query: content, source: "chat", preview: imageUrls?.length ? `[${imageUrls.length} image(s)]` : "" });
 
       // Create conversation if none active
       let convId = activeConversationId;
