@@ -226,7 +226,7 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={attachedImage ? "Ask about the image…" : "Ask MegaKUMUL anything..."}
+            placeholder={attachedImages.length ? "Ask about the image(s)…" : "Ask MegaKUMUL anything..."}
             rows={1}
             className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
@@ -253,7 +253,7 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSend}
-            disabled={(!input.trim() && !attachedImage) || isLoading}
+            disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
             className="shrink-0 rounded-xl p-2 transition-all disabled:opacity-30 gradient-primary glow-primary hover:opacity-90"
           >
             <Send className="h-4 w-4 text-primary-foreground" />
