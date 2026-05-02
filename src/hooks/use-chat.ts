@@ -219,5 +219,6 @@ export function useChat() {
     deleteConversation,
     renameConversation,
     conversationsLoaded,
+    vision,
   };
 }
