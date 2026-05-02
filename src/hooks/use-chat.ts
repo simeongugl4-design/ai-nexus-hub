@@ -128,6 +128,7 @@ export function useChat() {
         model: selectedModel,
         onDelta: (chunk) => {
           assistantContent += chunk;
+          setVision((v) => (v.active && !v.streaming ? { ...v, streaming: true } : v));
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last?.role === "assistant" && last.id === assistantId) {
@@ -149,6 +150,7 @@ export function useChat() {
         },
         onDone: async () => {
           setIsLoading(false);
+          setVision({ active: false, imageUrls: [], streaming: false });
           hapticSuccess();
           if (convId && assistantContent) {
             await saveMessage(convId, "assistant", assistantContent, selectedModel);
@@ -156,6 +158,7 @@ export function useChat() {
         },
         onError: (error) => {
           setIsLoading(false);
+          setVision({ active: false, imageUrls: [], streaming: false });
           hapticError();
           setMessages((prev) => [
             ...prev,
