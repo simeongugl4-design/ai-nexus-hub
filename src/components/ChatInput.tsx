@@ -5,11 +5,13 @@ import { hapticTap, hapticSelection, takePhoto } from "@/lib/native";
 import { toast } from "sonner";
 
 interface ChatInputProps {
-  onSend: (message: string, imageUrl?: string) => void;
+  onSend: (message: string, imageUrls?: string[]) => void;
   isLoading: boolean;
   prefill?: string;
   onPrefillUsed?: () => void;
 }
+
+const MAX_IMAGES = 6;
 
 const quickActions = [
   { icon: Sparkles, label: "Summarize", prefix: "Summarize: " },
