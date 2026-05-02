@@ -17,7 +17,7 @@ export async function streamChat({
   onDone,
   onError,
 }: {
-  messages: (Pick<Message, "role" | "content"> & { imageUrl?: string })[];
+  messages: (Pick<Message, "role" | "content"> & { imageUrl?: string; imageUrls?: string[] })[];
   model: string;
   onDelta: (text: string) => void;
   onDone: () => void;
@@ -27,14 +27,19 @@ export async function streamChat({
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const CHAT_URL = `${supabaseUrl}/functions/v1/mega-chat`;
 
-  // Convert messages: if a user message has an imageUrl, send multimodal content array
+  // Convert messages: if a user message has image(s), send multimodal content array
   const outMessages: OutMsg[] = messages.map((m) => {
-    if (m.role === "user" && m.imageUrl) {
+    const imgs = m.imageUrls && m.imageUrls.length
+      ? m.imageUrls
+      : m.imageUrl
+      ? [m.imageUrl]
+      : [];
+    if (m.role === "user" && imgs.length) {
       return {
         role: "user",
         content: [
-          { type: "text", text: m.content || "Analyze this image." },
-          { type: "image_url", image_url: { url: m.imageUrl } },
+          { type: "text", text: m.content || (imgs.length > 1 ? "Analyze these images." : "Analyze this image.") },
+          ...imgs.map((url) => ({ type: "image_url" as const, image_url: { url } })),
         ],
       };
     }
