@@ -168,27 +168,39 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
         </div>
 
         <AnimatePresence>
-          {attachedImage && (
+          {attachedImages.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
-              className="mb-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-2"
+              className="mb-2 rounded-xl border border-primary/30 bg-primary/5 p-2"
             >
-              <img src={attachedImage} alt="attachment preview" className="h-16 w-16 rounded-lg object-cover" />
-              <div className="flex-1 text-xs text-muted-foreground">
+              <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                 <div className="font-medium text-foreground flex items-center gap-1.5">
-                  <ImageIcon className="h-3.5 w-3.5 text-primary" /> Image attached
+                  <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                  {attachedImages.length} image{attachedImages.length > 1 ? "s" : ""} attached ({MAX_IMAGES} max)
                 </div>
-                <div>Will be sent to the AI for visual analysis.</div>
+                <button
+                  onClick={() => setAttachedImages([])}
+                  className="rounded-md px-2 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Clear all
+                </button>
               </div>
-              <button
-                onClick={() => setAttachedImage(null)}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Remove image"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {attachedImages.map((img, i) => (
+                  <div key={i} className="relative group">
+                    <img src={img} alt={`attachment ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-border" />
+                    <button
+                      onClick={() => removeImage(i)}
+                      className="absolute -right-1.5 -top-1.5 rounded-full bg-background border border-border p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground transition-opacity"
+                      title="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
