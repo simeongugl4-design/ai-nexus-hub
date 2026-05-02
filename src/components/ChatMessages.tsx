@@ -11,11 +11,14 @@ import { saveResponse } from "@/pages/SavedResponsesPage";
 import { toast } from "sonner";
 import megakumulLogo from "@/assets/megakumul-logo.png";
 import { FollowUpOptions } from "@/components/FollowUpOptions";
+import { VisionAnalysisProgress } from "@/components/VisionAnalysisProgress";
+import type { VisionAnalysis } from "@/hooks/use-chat";
 
 interface ChatMessagesProps {
   messages: Message[];
   isLoading: boolean;
   onSend?: (message: string) => void;
+  vision?: VisionAnalysis;
 }
 
 const followUpActions = [
@@ -56,7 +59,7 @@ function SaveButton({ content }: { content: string }) {
   );
 }
 
-export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -149,14 +152,27 @@ export function ChatMessages({ messages, isLoading, onSend }: ChatMessagesProps)
         </AnimatePresence>
 
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-            <img src={megakumulLogo} alt="AI" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
-            <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3">
-              <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
-              <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
-              <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
-            </div>
-          </motion.div>
+          vision?.active ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+              <img src={megakumulLogo} alt="AI" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+              <div className="flex-1">
+                <VisionAnalysisProgress
+                  imageUrls={vision.imageUrls}
+                  model={vision.model}
+                  streaming={vision.streaming}
+                />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+              <img src={megakumulLogo} alt="AI" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+              <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3">
+                <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
+                <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
+                <span className="h-2 w-2 rounded-full bg-primary typing-dot" />
+              </div>
+            </motion.div>
+          )
         )}
 
         {showFollowUps && (

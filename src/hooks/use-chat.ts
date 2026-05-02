@@ -14,10 +14,18 @@ import {
   generateTitle,
 } from "@/lib/conversations";
 
+export type VisionAnalysis = {
+  active: boolean;
+  imageUrls: string[];
+  model?: string;
+  streaming: boolean; // true once first delta has arrived
+};
+
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("creative");
+  const [vision, setVision] = useState<VisionAnalysis>({ active: false, imageUrls: [], streaming: false });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
@@ -81,6 +89,15 @@ export function useChat() {
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
+      // Activate vision-analysis indicator if any images are attached
+      if (imageUrls && imageUrls.length) {
+        const visionModel =
+          selectedModel === "gpt5" || selectedModel === "gpt52"
+            ? "openai/gpt-5"
+            : "google/gemini-2.5-pro";
+        setVision({ active: true, imageUrls, model: visionModel, streaming: false });
+      }
+
       addToHistory({ query: content, source: "chat", preview: imageUrls?.length ? `[${imageUrls.length} image(s)]` : "" });
 
       // Create conversation if none active
@@ -111,6 +128,7 @@ export function useChat() {
         model: selectedModel,
         onDelta: (chunk) => {
           assistantContent += chunk;
+          setVision((v) => (v.active && !v.streaming ? { ...v, streaming: true } : v));
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last?.role === "assistant" && last.id === assistantId) {
@@ -132,6 +150,7 @@ export function useChat() {
         },
         onDone: async () => {
           setIsLoading(false);
+          setVision({ active: false, imageUrls: [], streaming: false });
           hapticSuccess();
           if (convId && assistantContent) {
             await saveMessage(convId, "assistant", assistantContent, selectedModel);
@@ -139,6 +158,7 @@ export function useChat() {
         },
         onError: (error) => {
           setIsLoading(false);
+          setVision({ active: false, imageUrls: [], streaming: false });
           hapticError();
           setMessages((prev) => [
             ...prev,
@@ -199,5 +219,6 @@ export function useChat() {
     deleteConversation,
     renameConversation,
     conversationsLoaded,
+    vision,
   };
 }
