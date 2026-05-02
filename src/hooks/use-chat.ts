@@ -14,10 +14,18 @@ import {
   generateTitle,
 } from "@/lib/conversations";
 
+export type VisionAnalysis = {
+  active: boolean;
+  imageUrls: string[];
+  model?: string;
+  streaming: boolean; // true once first delta has arrived
+};
+
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("creative");
+  const [vision, setVision] = useState<VisionAnalysis>({ active: false, imageUrls: [], streaming: false });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
