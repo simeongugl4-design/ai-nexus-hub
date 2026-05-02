@@ -89,6 +89,15 @@ export function useChat() {
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
+      // Activate vision-analysis indicator if any images are attached
+      if (imageUrls && imageUrls.length) {
+        const visionModel =
+          selectedModel === "gpt5" || selectedModel === "gpt52"
+            ? "openai/gpt-5"
+            : "google/gemini-2.5-pro";
+        setVision({ active: true, imageUrls, model: visionModel, streaming: false });
+      }
+
       addToHistory({ query: content, source: "chat", preview: imageUrls?.length ? `[${imageUrls.length} image(s)]` : "" });
 
       // Create conversation if none active
