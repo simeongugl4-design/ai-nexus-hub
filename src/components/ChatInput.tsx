@@ -5,11 +5,13 @@ import { hapticTap, hapticSelection, takePhoto } from "@/lib/native";
 import { toast } from "sonner";
 
 interface ChatInputProps {
-  onSend: (message: string, imageUrl?: string) => void;
+  onSend: (message: string, imageUrls?: string[]) => void;
   isLoading: boolean;
   prefill?: string;
   onPrefillUsed?: () => void;
 }
+
+const MAX_IMAGES = 6;
 
 const quickActions = [
   { icon: Sparkles, label: "Summarize", prefix: "Summarize: " },
@@ -56,7 +58,7 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInputProps) {
   const [input, setInput] = useState("");
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,38 +77,65 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
     }
   }, [input]);
 
+  const addImage = (img: string) => {
+    setAttachedImages((prev) => {
+      if (prev.length >= MAX_IMAGES) {
+        toast.error(`You can attach up to ${MAX_IMAGES} images`);
+        return prev;
+      }
+      return [...prev, img];
+    });
+  };
+
+  const removeImage = (idx: number) => {
+    setAttachedImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSend = () => {
     const trimmed = input.trim();
-    if ((!trimmed && !attachedImage) || isLoading) return;
+    if ((!trimmed && attachedImages.length === 0) || isLoading) return;
     hapticTap("medium");
-    onSend(trimmed || "Analyze this image in detail.", attachedImage ?? undefined);
+    const text = trimmed || (attachedImages.length > 1 ? "Analyze these images in detail." : "Analyze this image in detail.");
+    onSend(text, attachedImages.length ? attachedImages : undefined);
     setInput("");
-    setAttachedImage(null);
+    setAttachedImages([]);
   };
 
   const handleCamera = async () => {
     hapticSelection();
+    if (attachedImages.length >= MAX_IMAGES) {
+      toast.error(`You can attach up to ${MAX_IMAGES} images`);
+      return;
+    }
     const dataUrl = await takePhoto();
     if (dataUrl) {
       const compressed = await compressImage(dataUrl);
-      setAttachedImage(compressed);
-      toast.success("Image attached — describe what you'd like to know");
+      addImage(compressed);
+      toast.success("Image attached");
       textareaRef.current?.focus();
     }
   };
 
   const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are supported here");
+    if (!files.length) return;
+    const remaining = MAX_IMAGES - attachedImages.length;
+    if (remaining <= 0) {
+      toast.error(`You can attach up to ${MAX_IMAGES} images`);
       return;
     }
-    const dataUrl = await fileToDataUrl(file);
-    const compressed = await compressImage(dataUrl);
-    setAttachedImage(compressed);
-    toast.success("Image attached");
+    const slice = files.slice(0, remaining);
+    if (files.length > remaining) {
+      toast.message(`Only first ${remaining} image(s) added (limit ${MAX_IMAGES})`);
+    }
+    for (const file of slice) {
+      if (!file.type.startsWith("image/")) continue;
+      const dataUrl = await fileToDataUrl(file);
+      const compressed = await compressImage(dataUrl);
+      addImage(compressed);
+    }
+    toast.success(`${slice.length} image(s) attached`);
     textareaRef.current?.focus();
   };
 
@@ -139,27 +168,39 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
         </div>
 
         <AnimatePresence>
-          {attachedImage && (
+          {attachedImages.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
-              className="mb-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-2"
+              className="mb-2 rounded-xl border border-primary/30 bg-primary/5 p-2"
             >
-              <img src={attachedImage} alt="attachment preview" className="h-16 w-16 rounded-lg object-cover" />
-              <div className="flex-1 text-xs text-muted-foreground">
+              <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                 <div className="font-medium text-foreground flex items-center gap-1.5">
-                  <ImageIcon className="h-3.5 w-3.5 text-primary" /> Image attached
+                  <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                  {attachedImages.length} image{attachedImages.length > 1 ? "s" : ""} attached ({MAX_IMAGES} max)
                 </div>
-                <div>Will be sent to the AI for visual analysis.</div>
+                <button
+                  onClick={() => setAttachedImages([])}
+                  className="rounded-md px-2 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Clear all
+                </button>
               </div>
-              <button
-                onClick={() => setAttachedImage(null)}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Remove image"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {attachedImages.map((img, i) => (
+                  <div key={i} className="relative group">
+                    <img src={img} alt={`attachment ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-border" />
+                    <button
+                      onClick={() => removeImage(i)}
+                      className="absolute -right-1.5 -top-1.5 rounded-full bg-background border border-border p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground transition-opacity"
+                      title="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -185,7 +226,7 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={attachedImage ? "Ask about the image…" : "Ask MegaKUMUL anything..."}
+            placeholder={attachedImages.length ? "Ask about the image(s)…" : "Ask MegaKUMUL anything..."}
             rows={1}
             className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
@@ -212,7 +253,7 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSend}
-            disabled={(!input.trim() && !attachedImage) || isLoading}
+            disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
             className="shrink-0 rounded-xl p-2 transition-all disabled:opacity-30 gradient-primary glow-primary hover:opacity-90"
           >
             <Send className="h-4 w-4 text-primary-foreground" />
