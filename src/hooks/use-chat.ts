@@ -97,8 +97,9 @@ export function useChat() {
         }
       }
 
-      // Persist user message — embed image as markdown so it survives reload
-      const persisted = imageUrl ? `${content}\n\n![attached](${imageUrl})` : content;
+      // Persist user message — embed images as markdown so they survive reload
+      const imageMarkdown = (imageUrls ?? []).map((u) => `![attached](${u})`).join("\n");
+      const persisted = imageMarkdown ? `${content}\n\n${imageMarkdown}` : content;
       await saveMessage(convId, "user", persisted);
 
       let assistantContent = "";
