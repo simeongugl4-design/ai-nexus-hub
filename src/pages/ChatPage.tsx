@@ -19,6 +19,7 @@ export default function ChatPage() {
     selectConversation,
     deleteConversation,
     renameConversation,
+    vision,
   } = useChat();
   const [inputPrefill, setInputPrefill] = useState("");
   const [prefillKey, setPrefillKey] = useState(0);
