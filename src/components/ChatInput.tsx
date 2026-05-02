@@ -58,7 +58,7 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInputProps) {
   const [input, setInput] = useState("");
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,38 +77,65 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
     }
   }, [input]);
 
+  const addImage = (img: string) => {
+    setAttachedImages((prev) => {
+      if (prev.length >= MAX_IMAGES) {
+        toast.error(`You can attach up to ${MAX_IMAGES} images`);
+        return prev;
+      }
+      return [...prev, img];
+    });
+  };
+
+  const removeImage = (idx: number) => {
+    setAttachedImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSend = () => {
     const trimmed = input.trim();
-    if ((!trimmed && !attachedImage) || isLoading) return;
+    if ((!trimmed && attachedImages.length === 0) || isLoading) return;
     hapticTap("medium");
-    onSend(trimmed || "Analyze this image in detail.", attachedImage ?? undefined);
+    const text = trimmed || (attachedImages.length > 1 ? "Analyze these images in detail." : "Analyze this image in detail.");
+    onSend(text, attachedImages.length ? attachedImages : undefined);
     setInput("");
-    setAttachedImage(null);
+    setAttachedImages([]);
   };
 
   const handleCamera = async () => {
     hapticSelection();
+    if (attachedImages.length >= MAX_IMAGES) {
+      toast.error(`You can attach up to ${MAX_IMAGES} images`);
+      return;
+    }
     const dataUrl = await takePhoto();
     if (dataUrl) {
       const compressed = await compressImage(dataUrl);
-      setAttachedImage(compressed);
-      toast.success("Image attached — describe what you'd like to know");
+      addImage(compressed);
+      toast.success("Image attached");
       textareaRef.current?.focus();
     }
   };
 
   const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are supported here");
+    if (!files.length) return;
+    const remaining = MAX_IMAGES - attachedImages.length;
+    if (remaining <= 0) {
+      toast.error(`You can attach up to ${MAX_IMAGES} images`);
       return;
     }
-    const dataUrl = await fileToDataUrl(file);
-    const compressed = await compressImage(dataUrl);
-    setAttachedImage(compressed);
-    toast.success("Image attached");
+    const slice = files.slice(0, remaining);
+    if (files.length > remaining) {
+      toast.message(`Only first ${remaining} image(s) added (limit ${MAX_IMAGES})`);
+    }
+    for (const file of slice) {
+      if (!file.type.startsWith("image/")) continue;
+      const dataUrl = await fileToDataUrl(file);
+      const compressed = await compressImage(dataUrl);
+      addImage(compressed);
+    }
+    toast.success(`${slice.length} image(s) attached`);
     textareaRef.current?.focus();
   };
 
