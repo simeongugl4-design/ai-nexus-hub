@@ -11,11 +11,14 @@ import { saveResponse } from "@/pages/SavedResponsesPage";
 import { toast } from "sonner";
 import megakumulLogo from "@/assets/megakumul-logo.png";
 import { FollowUpOptions } from "@/components/FollowUpOptions";
+import { VisionAnalysisProgress } from "@/components/VisionAnalysisProgress";
+import type { VisionAnalysis } from "@/hooks/use-chat";
 
 interface ChatMessagesProps {
   messages: Message[];
   isLoading: boolean;
   onSend?: (message: string) => void;
+  vision?: VisionAnalysis;
 }
 
 const followUpActions = [
