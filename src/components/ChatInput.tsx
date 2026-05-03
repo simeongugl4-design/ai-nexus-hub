@@ -57,11 +57,25 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInputProps) {
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string; isFinal?: boolean }>> }) => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed, onStop }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [listening, setListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recogRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictationBaseRef = useRef("");
 
   useEffect(() => {
     if (prefill) {
