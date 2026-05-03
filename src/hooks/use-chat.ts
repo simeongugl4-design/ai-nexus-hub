@@ -124,9 +124,13 @@ export function useChat() {
       const assistantId = crypto.randomUUID();
       const allMessages = [...messages, userMsg];
 
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       await streamChat({
         messages: allMessages,
         model: selectedModel,
+        signal: controller.signal,
         onDelta: (chunk) => {
           assistantContent += chunk;
           setVision((v) => (v.active && !v.streaming ? { ...v, streaming: true } : v));
@@ -149,10 +153,17 @@ export function useChat() {
             ];
           });
         },
-        onDone: async () => {
+        onDone: async (info) => {
           setIsLoading(false);
           setVision({ active: false, imageUrls: [], streaming: false });
+          abortRef.current = null;
           hapticSuccess();
+          if (info?.aborted && assistantContent) {
+            assistantContent += "\n\n_⏹ Stopped by user._";
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, content: assistantContent } : m))
+            );
+          }
           if (convId && assistantContent) {
             await saveMessage(convId, "assistant", assistantContent, selectedModel);
           }
