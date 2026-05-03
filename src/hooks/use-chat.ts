@@ -218,10 +218,15 @@ export function useChat() {
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   return {
     messages,
     isLoading,
     sendMessage,
+    stopGeneration,
     clearMessages,
     selectedModel,
     setSelectedModel,
