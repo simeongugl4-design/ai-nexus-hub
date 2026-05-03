@@ -192,6 +192,15 @@ export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessag
 
         <div ref={bottomRef} />
       </div>
+
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          startIndex={lightbox.index}
+          open={!!lightbox}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }
