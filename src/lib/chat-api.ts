@@ -74,6 +74,11 @@ export async function streamChat({
     let buffer = "";
 
     while (true) {
+      if (signal?.aborted) {
+        try { reader.cancel(); } catch { /* noop */ }
+        onDone({ aborted: true });
+        return;
+      }
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -106,6 +111,10 @@ export async function streamChat({
 
     onDone();
   } catch (e) {
+    if ((e as { name?: string })?.name === "AbortError") {
+      onDone({ aborted: true });
+      return;
+    }
     onError(e instanceof Error ? e.message : "Connection failed");
   }
 }
