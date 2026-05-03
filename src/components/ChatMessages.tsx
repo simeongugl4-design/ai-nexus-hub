@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import megakumulLogo from "@/assets/megakumul-logo.png";
 import { FollowUpOptions } from "@/components/FollowUpOptions";
 import { VisionAnalysisProgress } from "@/components/VisionAnalysisProgress";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import type { VisionAnalysis } from "@/hooks/use-chat";
 
 interface ChatMessagesProps {
