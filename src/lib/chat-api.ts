@@ -13,14 +13,16 @@ type OutMsg =
 export async function streamChat({
   messages,
   model,
+  signal,
   onDelta,
   onDone,
   onError,
 }: {
   messages: (Pick<Message, "role" | "content"> & { imageUrl?: string; imageUrls?: string[] })[];
   model: string;
+  signal?: AbortSignal;
   onDelta: (text: string) => void;
-  onDone: () => void;
+  onDone: (info?: { aborted?: boolean }) => void;
   onError: (error: string) => void;
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -54,6 +56,7 @@ export async function streamChat({
         Authorization: `Bearer ${supabaseKey}`,
       },
       body: JSON.stringify({ messages: outMessages, model }),
+      signal,
     });
 
     if (!resp.ok) {
@@ -71,6 +74,11 @@ export async function streamChat({
     let buffer = "";
 
     while (true) {
+      if (signal?.aborted) {
+        try { reader.cancel(); } catch { /* noop */ }
+        onDone({ aborted: true });
+        return;
+      }
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -103,6 +111,10 @@ export async function streamChat({
 
     onDone();
   } catch (e) {
+    if ((e as { name?: string })?.name === "AbortError") {
+      onDone({ aborted: true });
+      return;
+    }
     onError(e instanceof Error ? e.message : "Connection failed");
   }
 }

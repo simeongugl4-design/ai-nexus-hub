@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Message } from "@/lib/types";
 import { streamChat } from "@/lib/chat-api";
 import { hapticSuccess, hapticError } from "@/lib/native";
@@ -26,6 +26,7 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("creative");
   const [vision, setVision] = useState<VisionAnalysis>({ active: false, imageUrls: [], streaming: false });
+  const abortRef = useRef<AbortController | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
@@ -123,9 +124,13 @@ export function useChat() {
       const assistantId = crypto.randomUUID();
       const allMessages = [...messages, userMsg];
 
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       await streamChat({
         messages: allMessages,
         model: selectedModel,
+        signal: controller.signal,
         onDelta: (chunk) => {
           assistantContent += chunk;
           setVision((v) => (v.active && !v.streaming ? { ...v, streaming: true } : v));
@@ -148,10 +153,17 @@ export function useChat() {
             ];
           });
         },
-        onDone: async () => {
+        onDone: async (info) => {
           setIsLoading(false);
           setVision({ active: false, imageUrls: [], streaming: false });
+          abortRef.current = null;
           hapticSuccess();
+          if (info?.aborted && assistantContent) {
+            assistantContent += "\n\n_⏹ Stopped by user._";
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, content: assistantContent } : m))
+            );
+          }
           if (convId && assistantContent) {
             await saveMessage(convId, "assistant", assistantContent, selectedModel);
           }
@@ -159,6 +171,7 @@ export function useChat() {
         onError: (error) => {
           setIsLoading(false);
           setVision({ active: false, imageUrls: [], streaming: false });
+          abortRef.current = null;
           hapticError();
           setMessages((prev) => [
             ...prev,
@@ -205,10 +218,15 @@ export function useChat() {
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   return {
     messages,
     isLoading,
     sendMessage,
+    stopGeneration,
     clearMessages,
     selectedModel,
     setSelectedModel,

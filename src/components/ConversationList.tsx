@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -11,6 +11,7 @@ interface ConversationListProps {
   onNew: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
+  onExport?: (id: string) => void;
 }
 
 export function ConversationList({
@@ -20,6 +21,7 @@ export function ConversationList({
   onNew,
   onDelete,
   onRename,
+  onExport,
 }: ConversationListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -94,15 +96,26 @@ export function ConversationList({
                     </p>
                   </div>
                   <div className="hidden group-hover:flex items-center gap-0.5">
+                    {onExport && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onExport(conv.id); }}
+                        className="rounded p-1 hover:bg-muted"
+                        title="Export as Markdown"
+                      >
+                        <Download className="h-3 w-3" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); startEdit(conv.id, conv.title); }}
                       className="rounded p-1 hover:bg-muted"
+                      title="Rename"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
                       className="rounded p-1 hover:bg-destructive/20 text-destructive"
+                      title="Delete"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>

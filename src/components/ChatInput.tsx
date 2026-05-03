@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, Paperclip, Sparkles, Code, Languages, FileSearch, X, Camera as CameraIcon, Image as ImageIcon } from "lucide-react";
+import { Send, Mic, MicOff, Paperclip, Sparkles, Code, Languages, FileSearch, X, Camera as CameraIcon, Image as ImageIcon, Square } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { hapticTap, hapticSelection, takePhoto } from "@/lib/native";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ interface ChatInputProps {
   isLoading: boolean;
   prefill?: string;
   onPrefillUsed?: () => void;
+  onStop?: () => void;
 }
 
 const MAX_IMAGES = 6;
@@ -56,11 +57,25 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInputProps) {
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string; isFinal?: boolean }>> }) => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed, onStop }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [listening, setListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recogRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictationBaseRef = useRef("");
 
   useEffect(() => {
     if (prefill) {
@@ -143,6 +158,57 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const toggleDictation = () => {
+    hapticSelection();
+    if (listening) {
+      recogRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input isn't supported in this browser");
+      return;
+    }
+    const recog = new SR();
+    recog.lang = navigator.language || "en-US";
+    recog.interimResults = true;
+    recog.continuous = true;
+    dictationBaseRef.current = input ? input.trimEnd() + " " : "";
+    recog.onresult = (e) => {
+      let interim = "";
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i] as unknown as ArrayLike<{ transcript: string }> & { isFinal?: boolean };
+        const alt = res[0];
+        if (!alt) continue;
+        if (res.isFinal) final += alt.transcript;
+        else interim += alt.transcript;
+      }
+      const next = (dictationBaseRef.current + final + interim).replace(/\s+/g, " ").trimStart();
+      setInput(next);
+      if (final) dictationBaseRef.current += final;
+    };
+    recog.onerror = (ev) => {
+      if (ev.error && ev.error !== "aborted") toast.error(`Mic error: ${ev.error}`);
+    };
+    recog.onend = () => {
+      setListening(false);
+      recogRef.current = null;
+    };
+    recogRef.current = recog;
+    try {
+      recog.start();
+      setListening(true);
+      toast.success("Listening… speak now");
+    } catch {
+      toast.error("Could not start microphone");
     }
   };
 
@@ -245,19 +311,50 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed }: ChatInp
             )}
           </AnimatePresence>
 
-          <button className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <Mic className="h-4 w-4" />
+          <button
+            onClick={toggleDictation}
+            title={listening ? "Stop dictation" : "Voice dictation"}
+            className={`relative shrink-0 rounded-lg p-2 transition-colors ${
+              listening
+                ? "bg-destructive/15 text-destructive hover:bg-destructive/20"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            {listening && (
+              <motion.span
+                className="absolute inset-0 rounded-lg border border-destructive/60"
+                animate={{ scale: [1, 1.25, 1], opacity: [0.7, 0, 0.7] }}
+                transition={{ duration: 1.4, repeat: Infinity }}
+              />
+            )}
           </button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSend}
-            disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
-            className="shrink-0 rounded-xl p-2 transition-all disabled:opacity-30 gradient-primary glow-primary hover:opacity-90"
-          >
-            <Send className="h-4 w-4 text-primary-foreground" />
-          </motion.button>
+          {isLoading && onStop ? (
+            <motion.button
+              key="stop"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { hapticTap("medium"); onStop(); }}
+              title="Stop generating"
+              className="shrink-0 rounded-xl p-2 bg-destructive text-destructive-foreground hover:opacity-90 shadow-[0_0_20px_hsl(var(--destructive)/0.4)]"
+            >
+              <Square className="h-4 w-4 fill-current" />
+            </motion.button>
+          ) : (
+            <motion.button
+              key="send"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSend}
+              disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
+              className="shrink-0 rounded-xl p-2 transition-all disabled:opacity-30 gradient-primary glow-primary hover:opacity-90"
+            >
+              <Send className="h-4 w-4 text-primary-foreground" />
+            </motion.button>
+          )}
         </div>
 
         <p className="mt-2 text-center text-xs text-muted-foreground">
