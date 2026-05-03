@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Message } from "@/lib/types";
 import { streamChat } from "@/lib/chat-api";
 import { hapticSuccess, hapticError } from "@/lib/native";
