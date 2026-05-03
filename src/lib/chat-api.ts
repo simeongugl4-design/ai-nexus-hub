@@ -13,14 +13,16 @@ type OutMsg =
 export async function streamChat({
   messages,
   model,
+  signal,
   onDelta,
   onDone,
   onError,
 }: {
   messages: (Pick<Message, "role" | "content"> & { imageUrl?: string; imageUrls?: string[] })[];
   model: string;
+  signal?: AbortSignal;
   onDelta: (text: string) => void;
-  onDone: () => void;
+  onDone: (info?: { aborted?: boolean }) => void;
   onError: (error: string) => void;
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
