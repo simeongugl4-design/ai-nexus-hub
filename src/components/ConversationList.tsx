@@ -21,6 +21,7 @@ export function ConversationList({
   onNew,
   onDelete,
   onRename,
+  onExport,
 }: ConversationListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
