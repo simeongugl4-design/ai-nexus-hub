@@ -26,6 +26,7 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("creative");
   const [vision, setVision] = useState<VisionAnalysis>({ active: false, imageUrls: [], streaming: false });
+  const abortRef = useRef<AbortController | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
