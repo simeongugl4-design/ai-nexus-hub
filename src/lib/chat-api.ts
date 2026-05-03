@@ -56,6 +56,7 @@ export async function streamChat({
         Authorization: `Bearer ${supabaseKey}`,
       },
       body: JSON.stringify({ messages: outMessages, model }),
+      signal,
     });
 
     if (!resp.ok) {
