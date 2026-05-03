@@ -62,6 +62,7 @@ function SaveButton({ content }: { content: string }) {
 
 export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
