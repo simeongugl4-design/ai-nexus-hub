@@ -96,15 +96,26 @@ export function ConversationList({
                     </p>
                   </div>
                   <div className="hidden group-hover:flex items-center gap-0.5">
+                    {onExport && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onExport(conv.id); }}
+                        className="rounded p-1 hover:bg-muted"
+                        title="Export as Markdown"
+                      >
+                        <Download className="h-3 w-3" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); startEdit(conv.id, conv.title); }}
                       className="rounded p-1 hover:bg-muted"
+                      title="Rename"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
                       className="rounded p-1 hover:bg-destructive/20 text-destructive"
+                      title="Delete"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
