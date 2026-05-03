@@ -311,19 +311,50 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed, onStop }:
             )}
           </AnimatePresence>
 
-          <button className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <Mic className="h-4 w-4" />
+          <button
+            onClick={toggleDictation}
+            title={listening ? "Stop dictation" : "Voice dictation"}
+            className={`relative shrink-0 rounded-lg p-2 transition-colors ${
+              listening
+                ? "bg-destructive/15 text-destructive hover:bg-destructive/20"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            {listening && (
+              <motion.span
+                className="absolute inset-0 rounded-lg border border-destructive/60"
+                animate={{ scale: [1, 1.25, 1], opacity: [0.7, 0, 0.7] }}
+                transition={{ duration: 1.4, repeat: Infinity }}
+              />
+            )}
           </button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSend}
-            disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
-            className="shrink-0 rounded-xl p-2 transition-all disabled:opacity-30 gradient-primary glow-primary hover:opacity-90"
-          >
-            <Send className="h-4 w-4 text-primary-foreground" />
-          </motion.button>
+          {isLoading && onStop ? (
+            <motion.button
+              key="stop"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { hapticTap("medium"); onStop(); }}
+              title="Stop generating"
+              className="shrink-0 rounded-xl p-2 bg-destructive text-destructive-foreground hover:opacity-90 shadow-[0_0_20px_hsl(var(--destructive)/0.4)]"
+            >
+              <Square className="h-4 w-4 fill-current" />
+            </motion.button>
+          ) : (
+            <motion.button
+              key="send"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSend}
+              disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
+              className="shrink-0 rounded-xl p-2 transition-all disabled:opacity-30 gradient-primary glow-primary hover:opacity-90"
+            >
+              <Send className="h-4 w-4 text-primary-foreground" />
+            </motion.button>
+          )}
         </div>
 
         <p className="mt-2 text-center text-xs text-muted-foreground">
