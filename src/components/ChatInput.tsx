@@ -161,6 +161,57 @@ export function ChatInput({ onSend, isLoading, prefill, onPrefillUsed, onStop }:
     }
   };
 
+  const toggleDictation = () => {
+    hapticSelection();
+    if (listening) {
+      recogRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input isn't supported in this browser");
+      return;
+    }
+    const recog = new SR();
+    recog.lang = navigator.language || "en-US";
+    recog.interimResults = true;
+    recog.continuous = true;
+    dictationBaseRef.current = input ? input.trimEnd() + " " : "";
+    recog.onresult = (e) => {
+      let interim = "";
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i] as unknown as ArrayLike<{ transcript: string }> & { isFinal?: boolean };
+        const alt = res[0];
+        if (!alt) continue;
+        if (res.isFinal) final += alt.transcript;
+        else interim += alt.transcript;
+      }
+      const next = (dictationBaseRef.current + final + interim).replace(/\s+/g, " ").trimStart();
+      setInput(next);
+      if (final) dictationBaseRef.current += final;
+    };
+    recog.onerror = (ev) => {
+      if (ev.error && ev.error !== "aborted") toast.error(`Mic error: ${ev.error}`);
+    };
+    recog.onend = () => {
+      setListening(false);
+      recogRef.current = null;
+    };
+    recogRef.current = recog;
+    try {
+      recog.start();
+      setListening(true);
+      toast.success("Listening… speak now");
+    } catch {
+      toast.error("Could not start microphone");
+    }
+  };
+
   return (
     <div className="border-t border-border bg-card p-4">
       <div className="mx-auto max-w-3xl">
