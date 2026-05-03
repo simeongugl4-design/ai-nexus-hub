@@ -116,20 +116,29 @@ export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessag
                 )}
                 <div className="flex flex-col gap-1">
                   <div className={`rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"}`}>
-                    {msg.role === "user" && (msg.imageUrls?.length || msg.imageUrl) && (
-                      <div className={`mb-2 grid gap-1.5 ${
-                        ((msg.imageUrls?.length ?? (msg.imageUrl ? 1 : 0)) > 1) ? "grid-cols-2" : "grid-cols-1"
-                      }`}>
-                        {(msg.imageUrls ?? (msg.imageUrl ? [msg.imageUrl] : [])).map((url, i) => (
-                          <img
-                            key={i}
-                            src={url}
-                            alt={`attachment ${i + 1}`}
-                            className="max-h-64 w-full rounded-lg object-cover border border-primary-foreground/20"
-                          />
-                        ))}
-                      </div>
-                    )}
+                    {msg.role === "user" && (msg.imageUrls?.length || msg.imageUrl) && (() => {
+                      const imgs = msg.imageUrls ?? (msg.imageUrl ? [msg.imageUrl] : []);
+                      return (
+                        <div className={`mb-2 grid gap-1.5 ${imgs.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                          {imgs.map((url, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setLightbox({ images: imgs, index: i })}
+                              className="group relative overflow-hidden rounded-lg border border-primary-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary"
+                              title="Tap to view full size"
+                            >
+                              <img
+                                src={url}
+                                alt={`attachment ${i + 1}`}
+                                className="max-h-64 w-full object-cover transition-transform group-hover:scale-105"
+                              />
+                              <span className="pointer-events-none absolute inset-0 bg-background/0 transition-colors group-hover:bg-background/20" />
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:text-primary prose-pre:bg-muted prose-pre:border prose-pre:border-border">
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
