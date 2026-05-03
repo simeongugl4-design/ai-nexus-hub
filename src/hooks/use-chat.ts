@@ -171,6 +171,7 @@ export function useChat() {
         onError: (error) => {
           setIsLoading(false);
           setVision({ active: false, imageUrls: [], streaming: false });
+          abortRef.current = null;
           hapticError();
           setMessages((prev) => [
             ...prev,
