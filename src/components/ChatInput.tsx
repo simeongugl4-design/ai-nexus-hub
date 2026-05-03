@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, Paperclip, Sparkles, Code, Languages, FileSearch, X, Camera as CameraIcon, Image as ImageIcon } from "lucide-react";
+import { Send, Mic, MicOff, Paperclip, Sparkles, Code, Languages, FileSearch, X, Camera as CameraIcon, Image as ImageIcon, Square } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { hapticTap, hapticSelection, takePhoto } from "@/lib/native";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ interface ChatInputProps {
   isLoading: boolean;
   prefill?: string;
   onPrefillUsed?: () => void;
+  onStop?: () => void;
 }
 
 const MAX_IMAGES = 6;
