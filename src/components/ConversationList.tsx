@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -12,6 +12,8 @@ interface ConversationListProps {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onExport?: (id: string) => void;
+  onExportPdf?: (id: string) => void;
+  className?: string;
 }
 
 export function ConversationList({
