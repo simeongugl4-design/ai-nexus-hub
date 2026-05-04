@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -12,6 +12,8 @@ interface ConversationListProps {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onExport?: (id: string) => void;
+  onExportPdf?: (id: string) => void;
+  className?: string;
 }
 
 export function ConversationList({
@@ -22,6 +24,8 @@ export function ConversationList({
   onDelete,
   onRename,
   onExport,
+  onExportPdf,
+  className,
 }: ConversationListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -39,7 +43,7 @@ export function ConversationList({
   };
 
   return (
-    <div className="flex h-full flex-col border-r border-border bg-card/50 w-64">
+    <div className={`flex h-full flex-col border-r border-border bg-card/50 w-64 ${className ?? ""}`}>
       <div className="flex items-center justify-between border-b border-border p-3">
         <h3 className="text-sm font-semibold text-foreground">Chats</h3>
         <motion.button
@@ -95,7 +99,16 @@ export function ConversationList({
                       {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true })}
                     </p>
                   </div>
-                  <div className="hidden group-hover:flex items-center gap-0.5">
+                  <div className="flex md:hidden md:group-hover:flex group-hover:flex items-center gap-0.5">
+                    {onExportPdf && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onExportPdf(conv.id); }}
+                        className="rounded p-1 hover:bg-primary/15 text-primary"
+                        title="Export as PDF"
+                      >
+                        <FileDown className="h-3 w-3" />
+                      </button>
+                    )}
                     {onExport && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onExport(conv.id); }}
