@@ -1,5 +1,9 @@
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import type { Message } from "./types";
 
 type Opts = {
   title?: string;
