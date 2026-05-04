@@ -5,7 +5,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Message } from "@/lib/types";
-import { ArrowRight, Search, Lightbulb, Code, ListChecks, RefreshCw, Copy, Check, Star } from "lucide-react";
+import { ArrowRight, Search, Lightbulb, Code, ListChecks, RefreshCw, Copy, Check, Star, FileDown } from "lucide-react";
+import { exportVisionPDF } from "@/lib/export-vision-pdf";
 import { preprocessLatex } from "@/lib/latex-utils";
 import { saveResponse } from "@/pages/SavedResponsesPage";
 import { toast } from "sonner";
@@ -108,7 +109,14 @@ export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessag
     <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
       <div className="mx-auto max-w-3xl space-y-6">
         <AnimatePresence>
-          {messages.map((msg) => (
+          {messages.map((msg, idx) => {
+            const prev = idx > 0 ? messages[idx - 1] : null;
+            const sourceImages =
+              msg.role === "assistant" && prev?.role === "user"
+                ? (prev.imageUrls ?? (prev.imageUrl ? [prev.imageUrl] : []))
+                : [];
+            const hasVisionContext = sourceImages.length > 0;
+            return (
             <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`flex max-w-[85%] gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 {msg.role === "assistant" && (
@@ -153,13 +161,29 @@ export function ChatMessages({ messages, isLoading, onSend, vision }: ChatMessag
                     <div className="flex items-center gap-1 px-1">
                       <CopyButton text={msg.content} />
                       <SaveButton content={msg.content} />
+                      {hasVisionContext && (
+                        <button
+                          onClick={() => exportVisionPDF({
+                            title: "AI Image Analysis Report",
+                            model: msg.model,
+                            prompt: prev?.content,
+                            images: sourceImages,
+                            analysis: msg.content,
+                          })}
+                          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+                          title="Download analysis as PDF report"
+                        >
+                          <FileDown className="h-3.5 w-3.5" />
+                          PDF Report
+                        </button>
+                      )}
                       {msg.model && <span className="text-[10px] text-muted-foreground ml-1">{msg.model}</span>}
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
-          ))}
+          );})}
         </AnimatePresence>
 
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
