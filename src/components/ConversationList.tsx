@@ -99,7 +99,16 @@ export function ConversationList({
                       {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true })}
                     </p>
                   </div>
-                  <div className="hidden group-hover:flex items-center gap-0.5">
+                  <div className="flex md:hidden md:group-hover:flex group-hover:flex items-center gap-0.5">
+                    {onExportPdf && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onExportPdf(conv.id); }}
+                        className="rounded p-1 hover:bg-primary/15 text-primary"
+                        title="Export as PDF"
+                      >
+                        <FileDown className="h-3 w-3" />
+                      </button>
+                    )}
                     {onExport && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onExport(conv.id); }}
