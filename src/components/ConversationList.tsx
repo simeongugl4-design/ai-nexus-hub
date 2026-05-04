@@ -43,7 +43,7 @@ export function ConversationList({
   };
 
   return (
-    <div className="flex h-full flex-col border-r border-border bg-card/50 w-64">
+    <div className={`flex h-full flex-col border-r border-border bg-card/50 w-64 ${className ?? ""}`}>
       <div className="flex items-center justify-between border-b border-border p-3">
         <h3 className="text-sm font-semibold text-foreground">Chats</h3>
         <motion.button
