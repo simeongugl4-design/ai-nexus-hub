@@ -168,9 +168,9 @@ export function ConversationList({
           ))}
         </AnimatePresence>
 
-        {conversations.length === 0 && (
+        {filtered.length === 0 && (
           <p className="px-3 py-8 text-center text-xs text-muted-foreground">
-            No conversations yet. Start chatting!
+            {conversations.length === 0 ? "No conversations yet. Start chatting!" : "No chats match your search."}
           </p>
         )}
       </div>
