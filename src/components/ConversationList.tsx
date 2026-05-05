@@ -30,12 +30,27 @@ export function ConversationList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [query, setQuery] = useState("");
+  type SortKey = "updated" | "newest" | "title";
+  const [sort, setSort] = useState<SortKey>(() => {
+    if (typeof window === "undefined") return "updated";
+    return (localStorage.getItem("conv-sort") as SortKey) || "updated";
+  });
+  const setSortKey = (k: SortKey) => {
+    setSort(k);
+    try { localStorage.setItem("conv-sort", k); } catch { /* noop */ }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => c.title?.toLowerCase().includes(q));
-  }, [conversations, query]);
+    const base = q ? conversations.filter((c) => c.title?.toLowerCase().includes(q)) : conversations.slice();
+    base.sort((a, b) => {
+      if (sort === "title") return (a.title || "").localeCompare(b.title || "");
+      const aT = new Date(sort === "newest" ? a.created_at : a.updated_at).getTime();
+      const bT = new Date(sort === "newest" ? b.created_at : b.updated_at).getTime();
+      return bT - aT;
+    });
+    return base;
+  }, [conversations, query, sort]);
 
   const startEdit = (id: string, title: string) => {
     setEditingId(id);
