@@ -99,6 +99,27 @@ export function ConversationList({
             </button>
           )}
         </div>
+        <div className="mt-2 flex items-center gap-1">
+          {([
+            { k: "updated" as const, label: "Recent", Icon: Clock },
+            { k: "newest" as const, label: "Newest", Icon: Sparkles },
+            { k: "title" as const, label: "A–Z", Icon: ArrowDownAZ },
+          ]).map(({ k, label, Icon }) => (
+            <button
+              key={k}
+              onClick={() => setSortKey(k)}
+              className={`flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                sort === k
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+              title={`Sort by ${label}`}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
