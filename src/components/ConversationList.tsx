@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -30,12 +30,27 @@ export function ConversationList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [query, setQuery] = useState("");
+  type SortKey = "updated" | "newest" | "title";
+  const [sort, setSort] = useState<SortKey>(() => {
+    if (typeof window === "undefined") return "updated";
+    return (localStorage.getItem("conv-sort") as SortKey) || "updated";
+  });
+  const setSortKey = (k: SortKey) => {
+    setSort(k);
+    try { localStorage.setItem("conv-sort", k); } catch { /* noop */ }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => c.title?.toLowerCase().includes(q));
-  }, [conversations, query]);
+    const base = q ? conversations.filter((c) => c.title?.toLowerCase().includes(q)) : conversations.slice();
+    base.sort((a, b) => {
+      if (sort === "title") return (a.title || "").localeCompare(b.title || "");
+      const aT = new Date(sort === "newest" ? a.created_at : a.updated_at).getTime();
+      const bT = new Date(sort === "newest" ? b.created_at : b.updated_at).getTime();
+      return bT - aT;
+    });
+    return base;
+  }, [conversations, query, sort]);
 
   const startEdit = (id: string, title: string) => {
     setEditingId(id);
@@ -83,6 +98,27 @@ export function ConversationList({
               <X className="h-3 w-3" />
             </button>
           )}
+        </div>
+        <div className="mt-2 flex items-center gap-1">
+          {([
+            { k: "updated" as const, label: "Recent", Icon: Clock },
+            { k: "newest" as const, label: "Newest", Icon: Sparkles },
+            { k: "title" as const, label: "A–Z", Icon: ArrowDownAZ },
+          ]).map(({ k, label, Icon }) => (
+            <button
+              key={k}
+              onClick={() => setSortKey(k)}
+              className={`flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                sort === k
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+              title={`Sort by ${label}`}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
