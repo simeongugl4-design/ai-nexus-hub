@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles, ArrowUpAZ } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
