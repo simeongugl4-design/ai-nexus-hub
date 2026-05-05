@@ -1,8 +1,16 @@
 import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import { preprocessLatex } from "./latex-utils";
 import type { Message } from "./types";
 
 type Opts = {
@@ -13,10 +21,7 @@ type Opts = {
   analysis: string;
 };
 
-const BRAND = { r: 0, g: 188, b: 212 };
-const INK = { r: 22, g: 27, b: 34 };
-const MUTED = { r: 110, g: 120, b: 135 };
-const RULE = { r: 220, g: 226, b: 232 };
+// ---- helpers ----
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -28,300 +33,209 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function imageToDataUrl(src: string): Promise<{ data: string; w: number; h: number; fmt: "JPEG" | "PNG" }> {
-  if (src.startsWith("data:image/")) {
-    const fmt: "JPEG" | "PNG" = src.startsWith("data:image/png") ? "PNG" : "JPEG";
+async function imageToDataUrl(src: string): Promise<string> {
+  if (src.startsWith("data:image/")) return src;
+  try {
     const img = await loadImage(src);
-    return { data: src, w: img.naturalWidth, h: img.naturalHeight, fmt };
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext("2d")!.drawImage(img, 0, 0);
+    return canvas.toDataURL("image/jpeg", 0.92);
+  } catch {
+    return src;
   }
-  const img = await loadImage(src);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0);
-  return { data: canvas.toDataURL("image/jpeg", 0.92), w: canvas.width, h: canvas.height, fmt: "JPEG" };
 }
 
-// Lightweight markdown → blocks (headings, lists, paragraphs, code, hr)
-type Block =
-  | { type: "h1" | "h2" | "h3"; text: string }
-  | { type: "p"; text: string }
-  | { type: "li"; text: string; ordered: boolean; n?: number }
-  | { type: "code"; text: string }
-  | { type: "quote"; text: string }
-  | { type: "hr" };
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
 
-function parseMarkdown(md: string): Block[] {
-  const lines = md.replace(/\r\n/g, "\n").split("\n");
-  const out: Block[] = [];
-  let inCode = false;
-  let codeBuf: string[] = [];
-  let orderedCounter = 0;
-  let paraBuf: string[] = [];
+function markdownToHtml(md: string): string {
+  const node = createElement(ReactMarkdown as any, {
+    remarkPlugins: [remarkGfm, remarkMath],
+    rehypePlugins: [rehypeKatex],
+    children: preprocessLatex(md || ""),
+  });
+  return renderToStaticMarkup(node as any);
+}
 
-  const flushPara = () => {
-    if (paraBuf.length) {
-      out.push({ type: "p", text: paraBuf.join(" ").trim() });
-      paraBuf = [];
-    }
-  };
+// Inline a tiny subset of katex CSS via the app's already-loaded stylesheet.
+// We rely on document fonts; html2canvas captures computed styles.
 
-  for (const raw of lines) {
-    const line = raw;
-    if (line.trim().startsWith("```")) {
-      if (inCode) {
-        out.push({ type: "code", text: codeBuf.join("\n") });
-        codeBuf = [];
-        inCode = false;
-      } else {
-        flushPara();
-        inCode = true;
-      }
-      continue;
-    }
-    if (inCode) { codeBuf.push(line); continue; }
-
-    if (!line.trim()) { flushPara(); orderedCounter = 0; continue; }
-    if (/^\s*---+\s*$/.test(line)) { flushPara(); out.push({ type: "hr" }); continue; }
-
-    const h = line.match(/^(#{1,3})\s+(.*)$/);
-    if (h) {
-      flushPara();
-      const lvl = h[1].length as 1 | 2 | 3;
-      out.push({ type: (`h${lvl}` as "h1" | "h2" | "h3"), text: stripInline(h[2]) });
-      continue;
-    }
-    const ul = line.match(/^\s*[-*]\s+(.*)$/);
-    if (ul) { flushPara(); out.push({ type: "li", text: stripInline(ul[1]), ordered: false }); continue; }
-    const ol = line.match(/^\s*(\d+)\.\s+(.*)$/);
-    if (ol) { flushPara(); orderedCounter += 1; out.push({ type: "li", text: stripInline(ol[2]), ordered: true, n: orderedCounter }); continue; }
-    const q = line.match(/^>\s?(.*)$/);
-    if (q) { flushPara(); out.push({ type: "quote", text: stripInline(q[1]) }); continue; }
-
-    paraBuf.push(stripInline(line));
+const PDF_CSS = `
+  *,*::before,*::after{box-sizing:border-box}
+  .pdf-root{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color:#161b22; background:#ffffff; padding:36px 44px; width:794px;
+    line-height:1.55; font-size:13px;
   }
-  if (inCode && codeBuf.length) out.push({ type: "code", text: codeBuf.join("\n") });
-  flushPara();
+  .pdf-root h1{font-size:26px;margin:0 0 6px;color:#0b1220;font-weight:800;letter-spacing:-.01em}
+  .pdf-root h2{font-size:18px;margin:18px 0 8px;color:#00788a;font-weight:700}
+  .pdf-root h3{font-size:15px;margin:14px 0 6px;color:#0b1220;font-weight:700}
+  .pdf-root p{margin:6px 0}
+  .pdf-root ul,.pdf-root ol{margin:6px 0 6px 22px;padding:0}
+  .pdf-root li{margin:3px 0}
+  .pdf-root code{background:#f3f5f8;border:1px solid #e3e8ef;border-radius:4px;padding:1px 5px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#0b1220}
+  .pdf-root pre{background:#0f172a;color:#e6edf3;border-radius:8px;padding:12px 14px;overflow:hidden;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;margin:8px 0}
+  .pdf-root pre code{background:transparent;border:0;color:inherit;padding:0}
+  .pdf-root blockquote{border-left:3px solid #00bcd4;background:#f0fbfd;color:#334155;margin:8px 0;padding:8px 12px;border-radius:4px}
+  .pdf-root hr{border:0;border-top:1px solid #e2e8f0;margin:14px 0}
+  .pdf-root a{color:#0e7c8a;text-decoration:underline}
+  .pdf-root table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12px;table-layout:auto}
+  .pdf-root th,.pdf-root td{border:1px solid #d8dee6;padding:6px 9px;text-align:left;vertical-align:top}
+  .pdf-root thead th{background:#eef6f8;color:#0b1220;font-weight:700}
+  .pdf-root tbody tr:nth-child(even){background:#f8fafc}
+  .pdf-root img{max-width:100%;border-radius:6px;border:1px solid #e2e8f0}
+  /* KaTeX */
+  .pdf-root .katex{font-size:1.05em;color:#0b1220}
+  .pdf-root .katex-display{margin:10px 0;padding:10px 14px;background:#f6fbfd;border:1px solid #d6eef3;border-radius:8px;text-align:center;overflow-x:hidden}
+  .pdf-root .katex-display>.katex{font-size:1.15em}
+  /* Layout chrome */
+  .pdf-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00bcd4;padding-bottom:8px;margin-bottom:14px;font-size:11px;color:#475569}
+  .pdf-brand{font-weight:700;color:#0b1220;letter-spacing:.02em}
+  .pdf-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px}
+  .pdf-meta .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:2px}
+  .pdf-meta .v{color:#0b1220;font-weight:600}
+  .pdf-prompt{margin-top:8px;font-size:12px;color:#475569;font-style:italic;grid-column:1/-1}
+  .pdf-section-title{font-size:14px;font-weight:700;color:#00788a;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+  .pdf-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px}
+  .pdf-gallery figure{margin:0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#fff}
+  .pdf-gallery figcaption{font-size:10px;color:#64748b;padding:4px 8px;background:#f8fafc;border-top:1px solid #eef2f6}
+  .pdf-gallery img{display:block;width:100%;height:auto;border:0;border-radius:0}
+  .pdf-msg{border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;overflow:hidden}
+  .pdf-msg .pdf-msg-h{display:flex;justify-content:space-between;padding:8px 12px;font-size:11px;font-weight:700}
+  .pdf-msg.user .pdf-msg-h{background:#eaf6fb;color:#0b6e80}
+  .pdf-msg.assistant .pdf-msg-h{background:#f3eefb;color:#5b3aa8}
+  .pdf-msg .pdf-msg-b{padding:10px 14px}
+`;
+
+async function inlineImagesInHtml(html: string): Promise<string> {
+  const matches = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/g));
+  let out = html;
+  for (const m of matches) {
+    const src = m[1];
+    if (src.startsWith("data:")) continue;
+    try {
+      const data = await imageToDataUrl(src);
+      out = out.split(src).join(data);
+    } catch { /* ignore */ }
+  }
   return out;
 }
 
-function stripInline(s: string): string {
-  return s
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+function ensureKatexCss(): Promise<void> {
+  return new Promise((resolve) => {
+    if (document.querySelector('link[data-katex-pdf]')) return resolve();
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css";
+    link.setAttribute("data-katex-pdf", "true");
+    link.onload = () => resolve();
+    link.onerror = () => resolve();
+    document.head.appendChild(link);
+  });
 }
+
+async function htmlToPdf(innerHtml: string, fname: string) {
+  await ensureKatexCss();
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-10000px";
+  host.style.top = "0";
+  host.style.zIndex = "-1";
+  host.innerHTML = `<style>${PDF_CSS}</style><div class="pdf-root">${innerHtml}</div>`;
+  document.body.appendChild(host);
+  // wait a tick for fonts/css to apply
+  await new Promise(r => setTimeout(r, 60));
+  try {
+    const root = host.querySelector(".pdf-root") as HTMLElement;
+    const canvas = await html2canvas(root, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      logging: false,
+      windowWidth: root.scrollWidth,
+    });
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const PW = doc.internal.pageSize.getWidth();
+    const PH = doc.internal.pageSize.getHeight();
+    const margin = 24;
+    const imgW = PW - margin * 2;
+    const ratio = imgW / canvas.width;
+    const imgH = canvas.height * ratio;
+    const pageContentH = PH - margin * 2;
+
+    if (imgH <= pageContentH) {
+      doc.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", margin, margin, imgW, imgH, undefined, "FAST");
+    } else {
+      // slice the canvas vertically into page-sized chunks
+      const sliceCanvasH = Math.floor(pageContentH / ratio);
+      let offsetY = 0;
+      let page = 0;
+      while (offsetY < canvas.height) {
+        const sliceH = Math.min(sliceCanvasH, canvas.height - offsetY);
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = sliceH;
+        slice.getContext("2d")!.drawImage(canvas, 0, offsetY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        if (page > 0) doc.addPage();
+        doc.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", margin, margin, imgW, sliceH * ratio, undefined, "FAST");
+        // page number footer
+        doc.setFontSize(9); doc.setTextColor(120);
+        doc.text(`Page ${page + 1}`, PW / 2, PH - 10, { align: "center" });
+        offsetY += sliceH;
+        page += 1;
+      }
+    }
+
+    await deliverPdf(doc, fname);
+  } finally {
+    document.body.removeChild(host);
+  }
+}
+
+async function deliverPdf(doc: jsPDF, fname: string) {
+  if (Capacitor.isNativePlatform()) {
+    const dataUri = doc.output("datauristring");
+    const base64 = dataUri.substring(dataUri.indexOf("base64,") + 7);
+    const res = await Filesystem.writeFile({ path: fname, data: base64, directory: Directory.Documents });
+    try {
+      await Share.share({ title: "MegaKUMUL Report", text: "AI analysis report", url: res.uri, dialogTitle: "Share / Save PDF" });
+    } catch { /* cancelled */ }
+    return;
+  }
+  doc.save(fname);
+}
+
+// ---- Vision report ----
 
 export async function exportVisionPDF({ title, model, prompt, images, analysis }: Opts) {
   const t = toast.loading("Generating PDF report…");
   try {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const M = 48;
-    let y = M;
-    let page = 1;
-
-    const drawHeader = () => {
-      doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-      doc.rect(0, 0, PW, 6, "F");
-      doc.setFontSize(9);
-      doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      doc.text("MegaKUMUL · Vision Analysis Report", M, 22);
-      doc.text(new Date().toLocaleString(), PW - M, 22, { align: "right" });
-      doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-      doc.line(M, 30, PW - M, 30);
-    };
-    const drawFooter = () => {
-      doc.setFontSize(9);
-      doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      doc.text(`Page ${page}`, PW / 2, PH - 18, { align: "center" });
-      doc.text("Confidential · AI-generated", M, PH - 18);
-      doc.text("megakumul.ai", PW - M, PH - 18, { align: "right" });
-    };
-    const newPage = () => {
-      drawFooter();
-      doc.addPage();
-      page += 1;
-      y = M;
-      drawHeader();
-      y = 50;
-    };
-    const ensure = (h: number) => { if (y + h > PH - 40) newPage(); };
-
-    drawHeader();
-    y = 60;
-
-    // Title
-    doc.setTextColor(INK.r, INK.g, INK.b);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    const ttl = title || "AI Image Analysis Report";
-    const ttlLines = doc.splitTextToSize(ttl, PW - 2 * M);
-    doc.text(ttlLines, M, y);
-    y += ttlLines.length * 26;
-
-    // Meta box
-    doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-    doc.setFillColor(248, 250, 252);
-    const metaH = 64;
-    doc.roundedRect(M, y, PW - 2 * M, metaH, 6, 6, "FD");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(INK.r, INK.g, INK.b);
-    doc.text("Model", M + 12, y + 18);
-    doc.text("Images", M + 180, y + 18);
-    doc.text("Generated", M + 320, y + 18);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(60, 70, 85);
-    doc.text(model || "auto", M + 12, y + 34);
-    doc.text(String(images.length), M + 180, y + 34);
-    doc.text(new Date().toLocaleString(), M + 320, y + 34);
-    if (prompt) {
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      const p = doc.splitTextToSize(`Prompt: ${prompt}`, PW - 2 * M - 24);
-      doc.text(p[0] ?? "", M + 12, y + 54);
-    }
-    y += metaH + 18;
-
-    // Images section
-    if (images.length) {
-      ensure(28);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
-      doc.text("Analyzed Images", M, y);
-      y += 16;
-      doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-      doc.line(M, y, PW - M, y);
-      y += 14;
-
-      const colW = (PW - 2 * M - 12) / 2;
-      let col = 0;
-      let rowMaxH = 0;
-      for (let i = 0; i < images.length; i++) {
-        try {
-          const im = await imageToDataUrl(images[i]);
-          const ratio = im.h / im.w;
-          const w = colW;
-          const h = Math.min(220, w * ratio);
-          ensure(h + 26);
-          const x = M + col * (colW + 12);
-          doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-          doc.roundedRect(x - 2, y - 2, w + 4, h + 4, 4, 4, "S");
-          doc.addImage(im.data, im.fmt, x, y, w, h, undefined, "FAST");
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9);
-          doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-          doc.text(`Image ${i + 1} · ${im.w}×${im.h}`, x, y + h + 14);
-          rowMaxH = Math.max(rowMaxH, h);
-          col += 1;
-          if (col >= 2) { col = 0; y += rowMaxH + 26; rowMaxH = 0; }
-        } catch {
-          // skip broken
-        }
-      }
-      if (col !== 0) { y += rowMaxH + 26; }
-      y += 6;
-    }
-
-    // Analysis section
-    ensure(28);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
-    doc.text("Detailed Analysis", M, y);
-    y += 16;
-    doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-    doc.line(M, y, PW - M, y);
-    y += 14;
-
-    const blocks = parseMarkdown(analysis || "_No analysis available._");
-    const maxW = PW - 2 * M;
-
-    for (const b of blocks) {
-      if (b.type === "hr") {
-        ensure(14);
-        doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-        doc.line(M, y + 4, PW - M, y + 4);
-        y += 14;
-        continue;
-      }
-      if (b.type === "h1" || b.type === "h2" || b.type === "h3") {
-        const size = b.type === "h1" ? 16 : b.type === "h2" ? 13 : 11;
-        ensure(size + 10);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(size);
-        doc.setTextColor(INK.r, INK.g, INK.b);
-        const lines = doc.splitTextToSize(b.text, maxW);
-        doc.text(lines, M, y + size);
-        y += lines.length * (size + 4) + 6;
-        continue;
-      }
-      if (b.type === "code") {
-        doc.setFont("courier", "normal");
-        doc.setFontSize(9);
-        const lines = doc.splitTextToSize(b.text, maxW - 16);
-        const blockH = lines.length * 12 + 12;
-        ensure(blockH);
-        doc.setFillColor(245, 247, 250);
-        doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-        doc.roundedRect(M, y, maxW, blockH, 4, 4, "FD");
-        doc.setTextColor(INK.r, INK.g, INK.b);
-        doc.text(lines, M + 8, y + 14);
-        y += blockH + 8;
-        continue;
-      }
-      if (b.type === "quote") {
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(11);
-        doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-        const lines = doc.splitTextToSize(b.text, maxW - 16);
-        const blockH = lines.length * 14 + 8;
-        ensure(blockH);
-        doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b);
-        doc.setLineWidth(2);
-        doc.line(M + 2, y, M + 2, y + blockH - 4);
-        doc.setLineWidth(0.5);
-        doc.text(lines, M + 12, y + 12);
-        y += blockH + 4;
-        continue;
-      }
-      if (b.type === "li") {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(INK.r, INK.g, INK.b);
-        const bullet = b.ordered ? `${b.n}.` : "•";
-        const lines = doc.splitTextToSize(b.text, maxW - 22);
-        const blockH = lines.length * 14 + 4;
-        ensure(blockH);
-        doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
-        doc.text(bullet, M + 4, y + 12);
-        doc.setTextColor(INK.r, INK.g, INK.b);
-        doc.text(lines, M + 22, y + 12);
-        y += blockH;
-        continue;
-      }
-      // paragraph
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(INK.r, INK.g, INK.b);
-      const lines = doc.splitTextToSize(b.text, maxW);
-      const blockH = lines.length * 14 + 6;
-      ensure(blockH);
-      doc.text(lines, M, y + 12);
-      y += blockH;
-    }
-
-    drawFooter();
-    const fname = `vision-report-${Date.now()}.pdf`;
-    await deliverPdf(doc, fname);
+    const dataImgs = await Promise.all(images.map(imageToDataUrl));
+    const galleryHtml = dataImgs.length
+      ? `<div class="pdf-section-title">Analyzed Images</div>
+         <div class="pdf-gallery">${dataImgs.map((d, i) => `<figure><img src="${d}" alt="image ${i + 1}" /><figcaption>Image ${i + 1}</figcaption></figure>`).join("")}</div>`
+      : "";
+    const analysisHtml = await inlineImagesInHtml(markdownToHtml(analysis || "_No analysis available._"));
+    const innerHtml = `
+      <div class="pdf-header">
+        <div class="pdf-brand">MegaKUMUL · Vision Analysis Report</div>
+        <div>${escapeHtml(new Date().toLocaleString())}</div>
+      </div>
+      <h1>${escapeHtml(title || "AI Image Analysis Report")}</h1>
+      <div class="pdf-meta">
+        <div><div class="k">Model</div><div class="v">${escapeHtml(model || "auto")}</div></div>
+        <div><div class="k">Images</div><div class="v">${dataImgs.length}</div></div>
+        <div><div class="k">Generated</div><div class="v">${escapeHtml(new Date().toLocaleString())}</div></div>
+        ${prompt ? `<div class="pdf-prompt">Prompt: ${escapeHtml(prompt)}</div>` : ""}
+      </div>
+      ${galleryHtml}
+      <div class="pdf-section-title">Detailed Analysis</div>
+      <div>${analysisHtml}</div>
+    `;
+    await htmlToPdf(innerHtml, `vision-report-${Date.now()}.pdf`);
     toast.success("PDF report ready", { id: t });
   } catch (e) {
     console.error(e);
@@ -329,221 +243,44 @@ export async function exportVisionPDF({ title, model, prompt, images, analysis }
   }
 }
 
-async function deliverPdf(doc: jsPDF, fname: string) {
-  // Native: save to Documents and open share sheet
-  if (Capacitor.isNativePlatform()) {
-    const dataUri = doc.output("datauristring"); // data:application/pdf;filename=...;base64,xxx
-    const base64 = dataUri.substring(dataUri.indexOf("base64,") + 7);
-    const res = await Filesystem.writeFile({
-      path: fname,
-      data: base64,
-      directory: Directory.Documents,
-    });
-    try {
-      await Share.share({
-        title: "MegaKUMUL Report",
-        text: "AI analysis report",
-        url: res.uri,
-        dialogTitle: "Share / Save PDF",
-      });
-    } catch {
-      /* user cancelled */
-    }
-    return;
-  }
-  // Web: trigger download
-  doc.save(fname);
-}
-
-// ---------- Full conversation PDF ----------
+// ---- Conversation transcript ----
 
 export async function exportConversationPDF(opts: { title: string; messages: Message[]; model?: string }) {
   const { title, messages, model } = opts;
   const t = toast.loading("Generating conversation PDF…");
   try {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const M = 48;
-    let y = M;
-    let page = 1;
-
-    const drawHeader = () => {
-      doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-      doc.rect(0, 0, PW, 6, "F");
-      doc.setFontSize(9);
-      doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      doc.text("MegaKUMUL · Conversation Transcript", M, 22);
-      doc.text(new Date().toLocaleString(), PW - M, 22, { align: "right" });
-      doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-      doc.line(M, 30, PW - M, 30);
-    };
-    const drawFooter = () => {
-      doc.setFontSize(9);
-      doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      doc.text(`Page ${page}`, PW / 2, PH - 18, { align: "center" });
-      doc.text("Confidential · AI-generated", M, PH - 18);
-      doc.text("megakumul.ai", PW - M, PH - 18, { align: "right" });
-    };
-    const newPage = () => {
-      drawFooter();
-      doc.addPage();
-      page += 1;
-      drawHeader();
-      y = 50;
-    };
-    const ensure = (h: number) => { if (y + h > PH - 40) newPage(); };
-
-    drawHeader();
-    y = 60;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.setTextColor(INK.r, INK.g, INK.b);
-    const ttlLines = doc.splitTextToSize(title || "Conversation", PW - 2 * M);
-    doc.text(ttlLines, M, y);
-    y += ttlLines.length * 24 + 6;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-    doc.text(`${messages.length} messages · Model: ${model || "auto"}`, M, y);
-    y += 18;
-    doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-    doc.line(M, y, PW - M, y);
-    y += 14;
-
-    const maxW = PW - 2 * M - 16;
+    const parts: string[] = [];
+    parts.push(`
+      <div class="pdf-header">
+        <div class="pdf-brand">MegaKUMUL · Conversation Transcript</div>
+        <div>${escapeHtml(new Date().toLocaleString())}</div>
+      </div>
+      <h1>${escapeHtml(title || "Conversation")}</h1>
+      <div class="pdf-meta">
+        <div><div class="k">Messages</div><div class="v">${messages.length}</div></div>
+        <div><div class="k">Model</div><div class="v">${escapeHtml(model || "auto")}</div></div>
+        <div><div class="k">Exported</div><div class="v">${escapeHtml(new Date().toLocaleString())}</div></div>
+      </div>
+    `);
 
     for (const msg of messages) {
       const isUser = msg.role === "user";
-      const label = isUser ? "You" : "MegaKUMUL";
-      const bg = isUser ? { r: 240, g: 248, b: 255 } : { r: 250, g: 251, b: 253 };
-      const accent = isUser ? BRAND : { r: 130, g: 110, b: 220 };
-
-      ensure(40);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(accent.r, accent.g, accent.b);
-      doc.text(label, M + 8, y + 14);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : "";
-      doc.text(ts, PW - M - 8, y + 14, { align: "right" });
-      const headerH = 22;
-
-      // Render images first
       const imgs = msg.imageUrls ?? (msg.imageUrl ? [msg.imageUrl] : []);
-      let imgsBlock = 0;
-      const renderedImgs: { data: string; w: number; h: number; fmt: "JPEG" | "PNG" }[] = [];
-      for (const u of imgs) {
-        try { renderedImgs.push(await imageToDataUrl(u)); } catch { /* skip */ }
-      }
-
-      // Compute body
-      const blocks = parseMarkdown(msg.content || "");
-      // Estimate body height roughly to draw bg
-      // For simplicity: draw bg per block, but we'll group by drawing bubble bg now via per-block ensure logic.
-      // Draw header bubble background (just for label row)
-      doc.setFillColor(bg.r, bg.g, bg.b);
-      doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-      doc.roundedRect(M, y, PW - 2 * M, headerH, 4, 4, "FD");
-      y += headerH + 6;
-
-      // Render images
-      if (renderedImgs.length) {
-        const colW = (PW - 2 * M - 12) / Math.min(2, renderedImgs.length);
-        let col = 0;
-        let rowMax = 0;
-        for (let i = 0; i < renderedImgs.length; i++) {
-          const im = renderedImgs[i];
-          const ratio = im.h / im.w;
-          const w = colW;
-          const h = Math.min(160, w * ratio);
-          ensure(h + 10);
-          const x = M + col * (colW + 12);
-          doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-          doc.roundedRect(x - 1, y - 1, w + 2, h + 2, 3, 3, "S");
-          doc.addImage(im.data, im.fmt, x, y, w, h, undefined, "FAST");
-          rowMax = Math.max(rowMax, h);
-          col += 1;
-          if (col >= 2) { col = 0; y += rowMax + 10; rowMax = 0; }
-        }
-        if (col !== 0) y += rowMax + 10;
-        imgsBlock += 1;
-      }
-
-      // Body text blocks
-      for (const b of blocks) {
-        if (b.type === "hr") { ensure(10); y += 10; continue; }
-        if (b.type === "h1" || b.type === "h2" || b.type === "h3") {
-          const size = b.type === "h1" ? 14 : b.type === "h2" ? 12 : 11;
-          ensure(size + 8);
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(size);
-          doc.setTextColor(INK.r, INK.g, INK.b);
-          const lines = doc.splitTextToSize(b.text, maxW);
-          doc.text(lines, M + 8, y + size);
-          y += lines.length * (size + 3) + 4;
-          continue;
-        }
-        if (b.type === "code") {
-          doc.setFont("courier", "normal");
-          doc.setFontSize(9);
-          const lines = doc.splitTextToSize(b.text, maxW - 12);
-          const blockH = lines.length * 12 + 10;
-          ensure(blockH);
-          doc.setFillColor(245, 247, 250);
-          doc.setDrawColor(RULE.r, RULE.g, RULE.b);
-          doc.roundedRect(M + 8, y, PW - 2 * M - 16, blockH, 3, 3, "FD");
-          doc.setTextColor(INK.r, INK.g, INK.b);
-          doc.text(lines, M + 16, y + 12);
-          y += blockH + 4;
-          continue;
-        }
-        if (b.type === "li") {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          const lines = doc.splitTextToSize(b.text, maxW - 16);
-          const h = lines.length * 13 + 2;
-          ensure(h);
-          doc.setTextColor(accent.r, accent.g, accent.b);
-          doc.text(b.ordered ? `${b.n}.` : "•", M + 12, y + 11);
-          doc.setTextColor(INK.r, INK.g, INK.b);
-          doc.text(lines, M + 26, y + 11);
-          y += h;
-          continue;
-        }
-        if (b.type === "quote") {
-          doc.setFont("helvetica", "italic");
-          doc.setFontSize(10);
-          const lines = doc.splitTextToSize(b.text, maxW - 12);
-          const h = lines.length * 13 + 6;
-          ensure(h);
-          doc.setDrawColor(accent.r, accent.g, accent.b);
-          doc.setLineWidth(2);
-          doc.line(M + 10, y, M + 10, y + h - 4);
-          doc.setLineWidth(0.5);
-          doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-          doc.text(lines, M + 18, y + 11);
-          y += h;
-          continue;
-        }
-        // paragraph
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(INK.r, INK.g, INK.b);
-        const lines = doc.splitTextToSize(b.text, maxW);
-        const h = lines.length * 13 + 4;
-        ensure(h);
-        doc.text(lines, M + 8, y + 11);
-        y += h;
-      }
-      y += 14;
+      const dataImgs = await Promise.all(imgs.map(imageToDataUrl));
+      const imgHtml = dataImgs.length
+        ? `<div class="pdf-gallery">${dataImgs.map((d, i) => `<figure><img src="${d}" alt="image ${i + 1}"/><figcaption>Attachment ${i + 1}</figcaption></figure>`).join("")}</div>`
+        : "";
+      const bodyHtml = await inlineImagesInHtml(markdownToHtml(msg.content || ""));
+      const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : "";
+      parts.push(`
+        <div class="pdf-msg ${isUser ? "user" : "assistant"}">
+          <div class="pdf-msg-h"><span>${isUser ? "You" : "MegaKUMUL"}${msg.model ? ` · ${escapeHtml(msg.model)}` : ""}</span><span>${escapeHtml(ts)}</span></div>
+          <div class="pdf-msg-b">${imgHtml}${bodyHtml}</div>
+        </div>
+      `);
     }
 
-    drawFooter();
-    const fname = `${(title || "conversation").replace(/[^\w-]+/g, "-").slice(0, 50)}-${Date.now()}.pdf`;
-    await deliverPdf(doc, fname);
+    await htmlToPdf(parts.join("\n"), `${(title || "conversation").replace(/[^\w-]+/g, "-").slice(0, 50)}-${Date.now()}.pdf`);
     toast.success("Conversation PDF ready", { id: t });
   } catch (e) {
     console.error(e);
