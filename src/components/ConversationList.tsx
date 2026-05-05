@@ -64,9 +64,31 @@ export function ConversationList({
         </motion.button>
       </div>
 
+      <div className="border-b border-border p-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search chats…"
+            className="w-full rounded-md bg-muted/40 border border-border pl-7 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:bg-muted/70"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Clear"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
         <AnimatePresence>
-          {conversations.map((conv) => (
+          {filtered.map((conv) => (
             <motion.div
               key={conv.id}
               initial={{ opacity: 0, x: -10 }}
