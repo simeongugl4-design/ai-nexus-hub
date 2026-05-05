@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -29,6 +29,13 @@ export function ConversationList({
 }: ConversationListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) => c.title?.toLowerCase().includes(q));
+  }, [conversations, query]);
 
   const startEdit = (id: string, title: string) => {
     setEditingId(id);
@@ -57,9 +64,31 @@ export function ConversationList({
         </motion.button>
       </div>
 
+      <div className="border-b border-border p-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search chats…"
+            className="w-full rounded-md bg-muted/40 border border-border pl-7 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:bg-muted/70"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Clear"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
         <AnimatePresence>
-          {conversations.map((conv) => (
+          {filtered.map((conv) => (
             <motion.div
               key={conv.id}
               initial={{ opacity: 0, x: -10 }}
@@ -139,9 +168,9 @@ export function ConversationList({
           ))}
         </AnimatePresence>
 
-        {conversations.length === 0 && (
+        {filtered.length === 0 && (
           <p className="px-3 py-8 text-center text-xs text-muted-foreground">
-            No conversations yet. Start chatting!
+            {conversations.length === 0 ? "No conversations yet. Start chatting!" : "No chats match your search."}
           </p>
         )}
       </div>
