@@ -85,11 +85,43 @@ export function ConversationList({
   const searchRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [highlight, setHighlight] = useState(0);
+  const highlightedIdRef = useRef<string | null>(null);
 
-  // Reset highlight when filter results change
+  // Track which conversation is currently highlighted (by id)
   useEffect(() => {
-    setHighlight((h) => Math.min(h, Math.max(0, filtered.length - 1)));
-  }, [filtered.length]);
+    highlightedIdRef.current = filtered[highlight]?.id ?? null;
+  }, [highlight, filtered]);
+
+  // When the filtered list changes, try to keep the same conversation highlighted.
+  // If it's gone, fall back to the closest remaining index.
+  const prevFilteredRef = useRef(filtered);
+  useEffect(() => {
+    const prev = prevFilteredRef.current;
+    prevFilteredRef.current = filtered;
+    if (filtered.length === 0) { setHighlight(0); return; }
+
+    const targetId = highlightedIdRef.current;
+    const newIdx = targetId ? filtered.findIndex((c) => c.id === targetId) : -1;
+    if (newIdx >= 0) {
+      setHighlight(newIdx);
+      return;
+    }
+    // Find the closest remaining item from the previous list
+    if (targetId && prev.length) {
+      const prevIdx = prev.findIndex((c) => c.id === targetId);
+      if (prevIdx >= 0) {
+        for (let dist = 1; dist < prev.length; dist++) {
+          for (const probe of [prevIdx - dist, prevIdx + dist]) {
+            if (probe < 0 || probe >= prev.length) continue;
+            const candidate = prev[probe].id;
+            const found = filtered.findIndex((c) => c.id === candidate);
+            if (found >= 0) { setHighlight(found); return; }
+          }
+        }
+      }
+    }
+    setHighlight((h) => Math.min(h, filtered.length - 1));
+  }, [filtered]);
 
   // Scroll highlighted item into view
   useEffect(() => {
