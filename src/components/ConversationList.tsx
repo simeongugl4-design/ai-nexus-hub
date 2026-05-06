@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles, Pin, PinOff } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
@@ -82,6 +82,69 @@ export function ConversationList({
     setEditingId(null);
   };
 
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [highlight, setHighlight] = useState(0);
+
+  // Reset highlight when filter results change
+  useEffect(() => {
+    setHighlight((h) => Math.min(h, Math.max(0, filtered.length - 1)));
+  }, [filtered.length]);
+
+  // Global keyboard shortcuts (desktop-friendly, harmless on mobile)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isTyping =
+        tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+
+      // Cmd/Ctrl+K — focus search (works even while typing elsewhere)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+N — new chat
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        onNew();
+        return;
+      }
+
+      if (isTyping && target !== searchRef.current) return;
+
+      // Sorting: Alt+1/2/3
+      if (e.altKey && !e.metaKey && !e.ctrlKey) {
+        if (e.key === "1") { e.preventDefault(); setSortKey("updated"); return; }
+        if (e.key === "2") { e.preventDefault(); setSortKey("newest"); return; }
+        if (e.key === "3") { e.preventDefault(); setSortKey("title"); return; }
+      }
+
+      // Navigation when search is focused or list is visible
+      if (target === searchRef.current || !isTyping) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setHighlight((h) => Math.min(h + 1, filtered.length - 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setHighlight((h) => Math.max(h - 1, 0));
+        } else if (e.key === "Enter" && target === searchRef.current) {
+          const conv = filtered[highlight];
+          if (conv) {
+            e.preventDefault();
+            onSelect(conv.id);
+          }
+        } else if (e.key === "Escape" && target === searchRef.current) {
+          if (query) { e.preventDefault(); setQuery(""); }
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [filtered, highlight, onNew, onSelect, query]);
+
   return (
     <div className={`flex h-full flex-col border-r border-border bg-card/50 w-64 ${className ?? ""}`}>
       <div className="flex items-center justify-between border-b border-border p-3">
@@ -101,10 +164,11 @@ export function ConversationList({
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
+            ref={searchRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chats…"
+            placeholder="Search chats… (⌘/Ctrl+K)"
             className="w-full rounded-md bg-muted/40 border border-border pl-7 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:bg-muted/70"
           />
           {query && (
@@ -142,7 +206,7 @@ export function ConversationList({
 
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
         <AnimatePresence>
-          {filtered.map((conv) => (
+          {filtered.map((conv, idx) => (
             <motion.div
               key={conv.id}
               initial={{ opacity: 0, x: -10 }}
@@ -151,8 +215,11 @@ export function ConversationList({
               className={`group flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${
                 conv.id === activeId
                   ? "bg-primary/10 border border-primary/30 text-foreground"
+                  : idx === highlight
+                  ? "bg-muted/60 text-foreground ring-1 ring-primary/30"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
+              onMouseEnter={() => setHighlight(idx)}
               onClick={() => onSelect(conv.id)}
             >
               {isPinned(conv.id) ? (
