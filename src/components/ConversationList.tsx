@@ -94,7 +94,7 @@ export function ConversationList({
   // Scroll highlighted item into view
   useEffect(() => {
     const el = itemRefs.current[highlight];
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [highlight]);
 
   // Global keyboard shortcuts (desktop-friendly, harmless on mobile)
