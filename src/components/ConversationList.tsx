@@ -206,7 +206,7 @@ export function ConversationList({
 
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
         <AnimatePresence>
-          {filtered.map((conv) => (
+          {filtered.map((conv, idx) => (
             <motion.div
               key={conv.id}
               initial={{ opacity: 0, x: -10 }}
@@ -215,8 +215,11 @@ export function ConversationList({
               className={`group flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${
                 conv.id === activeId
                   ? "bg-primary/10 border border-primary/30 text-foreground"
+                  : idx === highlight
+                  ? "bg-muted/60 text-foreground ring-1 ring-primary/30"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
+              onMouseEnter={() => setHighlight(idx)}
               onClick={() => onSelect(conv.id)}
             >
               {isPinned(conv.id) ? (
