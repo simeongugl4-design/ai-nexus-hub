@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles, Pin, PinOff } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
