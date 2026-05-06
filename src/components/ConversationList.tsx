@@ -83,12 +83,19 @@ export function ConversationList({
   };
 
   const searchRef = useRef<HTMLInputElement>(null);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [highlight, setHighlight] = useState(0);
 
   // Reset highlight when filter results change
   useEffect(() => {
     setHighlight((h) => Math.min(h, Math.max(0, filtered.length - 1)));
   }, [filtered.length]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    const el = itemRefs.current[highlight];
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlight]);
 
   // Global keyboard shortcuts (desktop-friendly, harmless on mobile)
   useEffect(() => {
@@ -209,6 +216,7 @@ export function ConversationList({
           {filtered.map((conv, idx) => (
             <motion.div
               key={conv.id}
+              ref={(el) => { itemRefs.current[idx] = el; }}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
