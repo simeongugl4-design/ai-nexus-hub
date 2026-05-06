@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles, Pin, PinOff } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -40,6 +40,19 @@ export function ConversationList({
     try { localStorage.setItem("conv-sort", k); } catch { /* noop */ }
   };
 
+  const [pinned, setPinned] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("conv-pinned") || "[]"); } catch { return []; }
+  });
+  const isPinned = (id: string) => pinned.includes(id);
+  const togglePin = (id: string) => {
+    setPinned((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
+      try { localStorage.setItem("conv-pinned", JSON.stringify(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q ? conversations.filter((c) => c.title?.toLowerCase().includes(q)) : conversations.slice();
@@ -49,8 +62,13 @@ export function ConversationList({
       const bT = new Date(sort === "newest" ? b.created_at : b.updated_at).getTime();
       return bT - aT;
     });
+    base.sort((a, b) => {
+      const ap = pinned.includes(a.id) ? 1 : 0;
+      const bp = pinned.includes(b.id) ? 1 : 0;
+      return bp - ap;
+    });
     return base;
-  }, [conversations, query, sort]);
+  }, [conversations, query, sort, pinned]);
 
   const startEdit = (id: string, title: string) => {
     setEditingId(id);
