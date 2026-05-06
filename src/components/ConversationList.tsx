@@ -155,7 +155,11 @@ export function ConversationList({
               }`}
               onClick={() => onSelect(conv.id)}
             >
-              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+              {isPinned(conv.id) ? (
+                <Pin className="h-3.5 w-3.5 shrink-0 text-primary fill-current" />
+              ) : (
+                <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+              )}
 
               {editingId === conv.id ? (
                 <div className="flex flex-1 items-center gap-1">
@@ -183,6 +187,13 @@ export function ConversationList({
                     </p>
                   </div>
                   <div className="flex md:hidden md:group-hover:flex group-hover:flex items-center gap-0.5">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); togglePin(conv.id); }}
+                      className={`rounded p-1 hover:bg-muted ${isPinned(conv.id) ? "text-primary" : ""}`}
+                      title={isPinned(conv.id) ? "Unpin" : "Pin to top"}
+                    >
+                      {isPinned(conv.id) ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                    </button>
                     {onExportPdf && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onExportPdf(conv.id); }}
