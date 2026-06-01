@@ -249,12 +249,18 @@ export function ConversationList({
           }
         } else if (e.key === "Escape" && target === searchRef.current) {
           if (query) { e.preventDefault(); setQuery(""); }
+        } else if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          setShowHelp((s) => !s);
+        } else if (e.key === "Escape" && showHelp) {
+          e.preventDefault();
+          setShowHelp(false);
         }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [filtered, highlight, onNew, onSelect, query]);
+  }, [filtered, highlight, onNew, onSelect, query, showHelp]);
 
   return (
     <div className={`flex h-full flex-col border-r border-border bg-card/50 w-64 ${className ?? ""}`}>
