@@ -20,6 +20,24 @@ interface ConversationListProps {
   className?: string;
 }
 
+function ShortcutRow({ keys, label }: { keys: (string | React.ReactNode)[]; label: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1">
+        {keys.map((k, i) => (
+          <kbd
+            key={i}
+            className="inline-flex items-center justify-center rounded border border-border bg-muted/60 px-1 py-0.5 min-w-[1.25rem] text-[10px] font-mono text-foreground shadow-sm"
+          >
+            {k}
+          </kbd>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ConversationList({
   conversations,
   activeId,
