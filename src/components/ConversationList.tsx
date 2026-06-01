@@ -435,6 +435,79 @@ export function ConversationList({
           </p>
         )}
       </div>
+
+      {/* Keyboard Shortcuts Cheat Sheet */}
+      <AnimatePresence>
+        {showHelp && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setShowHelp(false)}
+          >
+            <div
+              className="mt-8 w-full max-w-sm rounded-xl border border-border bg-card/95 shadow-2xl p-5 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-foreground">Keyboard Shortcuts</h4>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">Navigation</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={[<ArrowUp className="h-3 w-3" />, <ArrowDown className="h-3 w-3" />]} label="Move highlight up / down" />
+                    <ShortcutRow keys={[<CornerDownLeft className="h-3 w-3" />]} label="Open highlighted conversation" />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">Search & Sort</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={[<Command className="h-3 w-3" />, "K"]} label="Focus search" />
+                    <ShortcutRow keys={["Esc"]} label="Clear search (when focused)" />
+                    <ShortcutRow keys={["Alt", "1"]} label="Sort by Recent" />
+                    <ShortcutRow keys={["Alt", "2"]} label="Sort by Newest" />
+                    <ShortcutRow keys={["Alt", "3"]} label="Sort by Title (A–Z)" />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">Highlight History</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={["Alt", <CornerUpLeft className="h-3 w-3" />]} label="Jump to previous highlight" />
+                    <ShortcutRow keys={["Alt", <CornerUpRight className="h-3 w-3" />]} label="Jump to next highlight" />
+                  </div>
+                  <p className="mt-2 leading-relaxed text-[11px] text-muted-foreground/70">
+                    The last 25 highlighted conversations are remembered in order. Use
+                    Alt+[ / Alt+] to travel back and forward through your highlight
+                    history, even across searches, sorts, and page loads.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">General</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={[<Command className="h-3 w-3" />, "Shift", "N"]} label="New chat" />
+                    <ShortcutRow keys={["?"]} label="Toggle this cheat sheet" />
+                    <ShortcutRow keys={["Esc"]} label="Close cheat sheet" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
