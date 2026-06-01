@@ -137,6 +137,7 @@ export function ConversationList({
   };
   const [highlight, setHighlight] = useState(computeInitialHighlight);
   const highlightedIdRef = useRef<string | null>(readStoredHighlightId());
+  const [showHelp, setShowHelp] = useState(false);
 
   // Track highlighted conversation by id, persist it, and record history
   useEffect(() => {
