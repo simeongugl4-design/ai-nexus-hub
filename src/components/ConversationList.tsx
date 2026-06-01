@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown, Search, ArrowDownAZ, Clock, Sparkles, Pin, PinOff } from "lucide-react";
+import {
+  MessageSquare, Plus, Trash2, Pencil, Check, X, Download, FileDown,
+  Search, ArrowDownAZ, Clock, Sparkles, Pin, PinOff, HelpCircle,
+  CornerDownLeft, ArrowUp, ArrowDown, Command, CornerUpLeft, CornerUpRight,
+} from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -14,6 +18,24 @@ interface ConversationListProps {
   onExport?: (id: string) => void;
   onExportPdf?: (id: string) => void;
   className?: string;
+}
+
+function ShortcutRow({ keys, label }: { keys: (string | React.ReactNode)[]; label: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1">
+        {keys.map((k, i) => (
+          <kbd
+            key={i}
+            className="inline-flex items-center justify-center rounded border border-border bg-muted/60 px-1 py-0.5 min-w-[1.25rem] text-[10px] font-mono text-foreground shadow-sm"
+          >
+            {k}
+          </kbd>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function ConversationList({
@@ -133,6 +155,7 @@ export function ConversationList({
   };
   const [highlight, setHighlight] = useState(computeInitialHighlight);
   const highlightedIdRef = useRef<string | null>(readStoredHighlightId());
+  const [showHelp, setShowHelp] = useState(false);
 
   // Track highlighted conversation by id, persist it, and record history
   useEffect(() => {
@@ -244,26 +267,43 @@ export function ConversationList({
           }
         } else if (e.key === "Escape" && target === searchRef.current) {
           if (query) { e.preventDefault(); setQuery(""); }
+        } else if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          setShowHelp((s) => !s);
+        } else if (e.key === "Escape" && showHelp) {
+          e.preventDefault();
+          setShowHelp(false);
         }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [filtered, highlight, onNew, onSelect, query]);
+  }, [filtered, highlight, onNew, onSelect, query, showHelp]);
 
   return (
     <div className={`flex h-full flex-col border-r border-border bg-card/50 w-64 ${className ?? ""}`}>
       <div className="flex items-center justify-between border-b border-border p-3">
         <h3 className="text-sm font-semibold text-foreground">Chats</h3>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={onNew}
-          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          title="New Chat"
-        >
-          <Plus className="h-4 w-4" />
-        </motion.button>
+        <div className="flex items-center gap-1">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowHelp(true)}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Keyboard shortcuts (?)"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={onNew}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="New Chat"
+          >
+            <Plus className="h-4 w-4" />
+          </motion.button>
+        </div>
       </div>
 
       <div className="border-b border-border p-2">
@@ -413,6 +453,79 @@ export function ConversationList({
           </p>
         )}
       </div>
+
+      {/* Keyboard Shortcuts Cheat Sheet */}
+      <AnimatePresence>
+        {showHelp && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setShowHelp(false)}
+          >
+            <div
+              className="mt-8 w-full max-w-sm rounded-xl border border-border bg-card/95 shadow-2xl p-5 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-foreground">Keyboard Shortcuts</h4>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">Navigation</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={[<ArrowUp className="h-3 w-3" />, <ArrowDown className="h-3 w-3" />]} label="Move highlight up / down" />
+                    <ShortcutRow keys={[<CornerDownLeft className="h-3 w-3" />]} label="Open highlighted conversation" />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">Search & Sort</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={[<Command className="h-3 w-3" />, "K"]} label="Focus search" />
+                    <ShortcutRow keys={["Esc"]} label="Clear search (when focused)" />
+                    <ShortcutRow keys={["Alt", "1"]} label="Sort by Recent" />
+                    <ShortcutRow keys={["Alt", "2"]} label="Sort by Newest" />
+                    <ShortcutRow keys={["Alt", "3"]} label="Sort by Title (A–Z)" />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">Highlight History</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={["Alt", <CornerUpLeft className="h-3 w-3" />]} label="Jump to previous highlight" />
+                    <ShortcutRow keys={["Alt", <CornerUpRight className="h-3 w-3" />]} label="Jump to next highlight" />
+                  </div>
+                  <p className="mt-2 leading-relaxed text-[11px] text-muted-foreground/70">
+                    The last 25 highlighted conversations are remembered in order. Use
+                    Alt+[ / Alt+] to travel back and forward through your highlight
+                    history, even across searches, sorts, and page loads.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 font-medium text-primary">General</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <ShortcutRow keys={[<Command className="h-3 w-3" />, "Shift", "N"]} label="New chat" />
+                    <ShortcutRow keys={["?"]} label="Toggle this cheat sheet" />
+                    <ShortcutRow keys={["Esc"]} label="Close cheat sheet" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
