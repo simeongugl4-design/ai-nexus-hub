@@ -211,6 +211,21 @@ export function ConversationList({
         if (e.key === "1") { e.preventDefault(); setSortKey("updated"); return; }
         if (e.key === "2") { e.preventDefault(); setSortKey("newest"); return; }
         if (e.key === "3") { e.preventDefault(); setSortKey("title"); return; }
+        // History navigation: Alt+[ back, Alt+] forward
+        if (e.key === "[" || e.key === "]") {
+          const dir = e.key === "[" ? -1 : 1;
+          const nextPos = historyPosRef.current + dir;
+          if (nextPos < 0 || nextPos >= historyRef.current.length) return;
+          const targetId = historyRef.current[nextPos];
+          const idx = filtered.findIndex((c) => c.id === targetId);
+          if (idx >= 0) {
+            e.preventDefault();
+            historyPosRef.current = nextPos;
+            suppressHistoryPushRef.current = true;
+            setHighlight(idx);
+          }
+          return;
+        }
       }
 
       // Navigation when search is focused or list is visible
