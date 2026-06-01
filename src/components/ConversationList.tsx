@@ -84,16 +84,65 @@ export function ConversationList({
 
   const searchRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [highlight, setHighlight] = useState(0);
-  const highlightedIdRef = useRef<string | null>(null);
 
-  // Track which conversation is currently highlighted (by id)
+  // Persisted highlight id (survives remounts, page switches, refreshes)
+  const readStoredHighlightId = (): string | null => {
+    if (typeof window === "undefined") return null;
+    try { return localStorage.getItem("conv-highlight-id"); } catch { return null; }
+  };
+  const writeStoredHighlightId = (id: string | null) => {
+    try {
+      if (id) localStorage.setItem("conv-highlight-id", id);
+      else localStorage.removeItem("conv-highlight-id");
+    } catch { /* noop */ }
+  };
+
+  // Highlight history (ring buffer) — powers Alt+[ / Alt+] back/forward jumps
+  const HISTORY_MAX = 25;
+  const readStoredHistory = (): string[] => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("conv-highlight-history") || "[]"); } catch { return []; }
+  };
+  const historyRef = useRef<string[]>(readStoredHistory());
+  const historyPosRef = useRef<number>(historyRef.current.length - 1);
+  const suppressHistoryPushRef = useRef(false);
+  const pushHistory = (id: string) => {
+    if (suppressHistoryPushRef.current) { suppressHistoryPushRef.current = false; return; }
+    const cur = historyRef.current;
+    if (cur[historyPosRef.current] === id) return;
+    const truncated = cur.slice(0, historyPosRef.current + 1);
+    truncated.push(id);
+    const trimmed = truncated.slice(-HISTORY_MAX);
+    historyRef.current = trimmed;
+    historyPosRef.current = trimmed.length - 1;
+    try { localStorage.setItem("conv-highlight-history", JSON.stringify(trimmed)); } catch { /* noop */ }
+  };
+
+  // Initial highlight: stored id → active conversation → 0
+  const computeInitialHighlight = () => {
+    const storedId = readStoredHighlightId();
+    if (storedId) {
+      const idx = filtered.findIndex((c) => c.id === storedId);
+      if (idx >= 0) return idx;
+    }
+    if (activeId) {
+      const idx = filtered.findIndex((c) => c.id === activeId);
+      if (idx >= 0) return idx;
+    }
+    return 0;
+  };
+  const [highlight, setHighlight] = useState(computeInitialHighlight);
+  const highlightedIdRef = useRef<string | null>(readStoredHighlightId());
+
+  // Track highlighted conversation by id, persist it, and record history
   useEffect(() => {
-    highlightedIdRef.current = filtered[highlight]?.id ?? null;
+    const id = filtered[highlight]?.id ?? null;
+    highlightedIdRef.current = id;
+    writeStoredHighlightId(id);
+    if (id) pushHistory(id);
   }, [highlight, filtered]);
 
-  // When the filtered list changes, try to keep the same conversation highlighted.
-  // If it's gone, fall back to the closest remaining index.
+  // When filtered list changes (search/sort/new chats loaded), keep highlight stable.
   const prevFilteredRef = useRef(filtered);
   useEffect(() => {
     const prev = prevFilteredRef.current;
@@ -102,19 +151,22 @@ export function ConversationList({
 
     const targetId = highlightedIdRef.current;
     const newIdx = targetId ? filtered.findIndex((c) => c.id === targetId) : -1;
-    if (newIdx >= 0) {
-      setHighlight(newIdx);
-      return;
+    if (newIdx >= 0) { setHighlight(newIdx); return; }
+
+    // Walk highlight history backwards to find the most recent still-present chat
+    for (let i = historyRef.current.length - 1; i >= 0; i--) {
+      const found = filtered.findIndex((c) => c.id === historyRef.current[i]);
+      if (found >= 0) { setHighlight(found); return; }
     }
-    // Find the closest remaining item from the previous list
+
+    // Closest remaining neighbor from previous list
     if (targetId && prev.length) {
       const prevIdx = prev.findIndex((c) => c.id === targetId);
       if (prevIdx >= 0) {
         for (let dist = 1; dist < prev.length; dist++) {
           for (const probe of [prevIdx - dist, prevIdx + dist]) {
             if (probe < 0 || probe >= prev.length) continue;
-            const candidate = prev[probe].id;
-            const found = filtered.findIndex((c) => c.id === candidate);
+            const found = filtered.findIndex((c) => c.id === prev[probe].id);
             if (found >= 0) { setHighlight(found); return; }
           }
         }
@@ -159,6 +211,21 @@ export function ConversationList({
         if (e.key === "1") { e.preventDefault(); setSortKey("updated"); return; }
         if (e.key === "2") { e.preventDefault(); setSortKey("newest"); return; }
         if (e.key === "3") { e.preventDefault(); setSortKey("title"); return; }
+        // History navigation: Alt+[ back, Alt+] forward
+        if (e.key === "[" || e.key === "]") {
+          const dir = e.key === "[" ? -1 : 1;
+          const nextPos = historyPosRef.current + dir;
+          if (nextPos < 0 || nextPos >= historyRef.current.length) return;
+          const targetId = historyRef.current[nextPos];
+          const idx = filtered.findIndex((c) => c.id === targetId);
+          if (idx >= 0) {
+            e.preventDefault();
+            historyPosRef.current = nextPos;
+            suppressHistoryPushRef.current = true;
+            setHighlight(idx);
+          }
+          return;
+        }
       }
 
       // Navigation when search is focused or list is visible
