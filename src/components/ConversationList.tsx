@@ -266,15 +266,26 @@ export function ConversationList({
     <div className={`flex h-full flex-col border-r border-border bg-card/50 w-64 ${className ?? ""}`}>
       <div className="flex items-center justify-between border-b border-border p-3">
         <h3 className="text-sm font-semibold text-foreground">Chats</h3>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={onNew}
-          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          title="New Chat"
-        >
-          <Plus className="h-4 w-4" />
-        </motion.button>
+        <div className="flex items-center gap-1">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowHelp(true)}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Keyboard shortcuts (?)"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={onNew}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="New Chat"
+          >
+            <Plus className="h-4 w-4" />
+          </motion.button>
+        </div>
       </div>
 
       <div className="border-b border-border p-2">
