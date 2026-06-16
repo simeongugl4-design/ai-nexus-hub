@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, Search, FileText, ImageIcon,
-  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles, Box, GalleryHorizontalEnd
+  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles, Box, GalleryHorizontalEnd, Brain
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -31,6 +31,7 @@ const mainItems = [
 ];
 
 const secondaryItems = [
+  { title: "Memory Vault", url: "/memory", icon: Brain },
   { title: "Knowledge Base", url: "/knowledge", icon: BookOpen },
   { title: "Saved Responses", url: "/saved", icon: Star },
   { title: "History", url: "/history", icon: Clock },

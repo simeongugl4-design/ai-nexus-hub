@@ -3,6 +3,8 @@ import { Message } from "@/lib/types";
 import { streamChat } from "@/lib/chat-api";
 import { hapticSuccess, hapticError } from "@/lib/native";
 import { addToHistory } from "@/pages/HistoryPage";
+import { buildMemoryContext, listMemories, addMemory } from "@/lib/memory";
+import { extractMemories } from "@/lib/memory-api";
 import {
   Conversation,
   createConversation,
@@ -127,10 +129,13 @@ export function useChat() {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const memoryContext = buildMemoryContext(content);
+
       await streamChat({
         messages: allMessages,
         model: selectedModel,
         signal: controller.signal,
+        memoryContext,
         onDelta: (chunk) => {
           assistantContent += chunk;
           setVision((v) => (v.active && !v.streaming ? { ...v, streaming: true } : v));
@@ -166,6 +171,23 @@ export function useChat() {
           }
           if (convId && assistantContent) {
             await saveMessage(convId, "assistant", assistantContent, selectedModel);
+          }
+          // Auto-extract memories from this exchange (best-effort, fire & forget)
+          if (!info?.aborted && assistantContent && content.trim().length > 4) {
+            const existing = listMemories().slice(0, 30).map((m) => m.content);
+            extractMemories(content, assistantContent, existing)
+              .then((mems) => {
+                mems.forEach((m) =>
+                  addMemory({
+                    content: m.content,
+                    type: m.type,
+                    importance: m.importance,
+                    pinned: false,
+                    source: "auto",
+                  })
+                );
+              })
+              .catch(() => { /* silent */ });
           }
         },
         onError: (error) => {

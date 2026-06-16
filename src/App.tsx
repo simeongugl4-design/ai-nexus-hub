@@ -20,6 +20,7 @@ import GalleryPage from "./pages/GalleryPage";
 import SavedResponsesPage from "./pages/SavedResponsesPage";
 import HistoryPage from "./pages/HistoryPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
+import MemoryPage from "./pages/MemoryPage";
 import SettingsPage from "./pages/SettingsPage";
 import PricingPage from "./pages/PricingPage";
 import LoginPage from "./pages/LoginPage";
@@ -84,6 +85,7 @@ const App = () => {
                     <Route path="/knowledge" element={<KnowledgeBasePage />} />
                     <Route path="/saved" element={<SavedResponsesPage />} />
                     <Route path="/history" element={<HistoryPage />} />
+                    <Route path="/memory" element={<MemoryPage />} />
                     <Route path="/integrations" element={<IntegrationsPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/pricing" element={<PricingPage />} />

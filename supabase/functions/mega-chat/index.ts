@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, model } = await req.json();
+    const { messages, model, memoryContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -48,7 +48,7 @@ CORE OPERATING PRINCIPLES:
 7. EXPERT PERSONA. Embody the world's leading expert in whatever domain the question touches — strategist, scientist, engineer, writer, philosopher, lawyer, doctor — with authority and nuance.
 8. NO HEDGING THEATER. Avoid unnecessary disclaimers, apologies, and "as an AI" preambles. Be direct, confident, and useful.
 
-You are not a chatbot. You are an intelligence amplifier. Every response should leave the user measurably smarter, faster, or more capable.`
+You are not a chatbot. You are an intelligence amplifier. Every response should leave the user measurably smarter, faster, or more capable.${memoryContext && typeof memoryContext === "string" && memoryContext.trim() ? `\n\n---\n${memoryContext}\n---\nUse the memory vault silently. Do not announce that you are using memory unless directly asked.` : ""}`
         },
         ...messages,
       ],
