@@ -14,6 +14,7 @@ export async function streamChat({
   messages,
   model,
   signal,
+  memoryContext,
   onDelta,
   onDone,
   onError,
@@ -21,6 +22,7 @@ export async function streamChat({
   messages: (Pick<Message, "role" | "content"> & { imageUrl?: string; imageUrls?: string[] })[];
   model: string;
   signal?: AbortSignal;
+  memoryContext?: string;
   onDelta: (text: string) => void;
   onDone: (info?: { aborted?: boolean }) => void;
   onError: (error: string) => void;
@@ -55,7 +57,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({ messages: outMessages, model }),
+      body: JSON.stringify({ messages: outMessages, model, memoryContext }),
       signal,
     });
 
