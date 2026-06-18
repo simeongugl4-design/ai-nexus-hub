@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -16,6 +16,9 @@ import {
   BookOpen,
   Landmark,
   FlaskConical,
+  CheckCircle2,
+  Circle,
+  ListTree,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +26,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  runResearchAgent,
+  streamResearchAgent,
   type ResearchAgentReport,
   type AgentSource,
   type ConfidenceLabel,
+  type AgentStage,
 } from "@/lib/research-agent-api";
 import { toast } from "sonner";
 
@@ -52,6 +56,14 @@ const CONFIDENCE_META: Record<ConfidenceLabel, { color: string; bg: string; labe
   "very-low": { color: "text-red-400", bg: "bg-red-500/10 border-red-500/30", label: "Very Low" },
 };
 
+const STAGES: { key: AgentStage; label: string }[] = [
+  { key: "planning", label: "Plan" },
+  { key: "searching", label: "Search" },
+  { key: "scoring", label: "Score" },
+  { key: "synthesizing", label: "Synthesize" },
+  { key: "done", label: "Done" },
+];
+
 function credColor(score: number) {
   if (score >= 85) return "text-emerald-400";
   if (score >= 70) return "text-cyan-400";
@@ -72,25 +84,81 @@ function evidenceBadge(s: string) {
 export default function ResearchAgentPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<AgentStage>("idle");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [subqueries, setSubqueries] = useState<string[]>([]);
+  const [sources, setSources] = useState<AgentSource[]>([]);
   const [report, setReport] = useState<ResearchAgentReport | null>(null);
+  const sourcesRef = useRef<AgentSource[]>([]);
+
+  const stageIdx = STAGES.findIndex((s) => s.key === stage);
 
   const run = async () => {
     if (!query.trim() || loading) return;
     setLoading(true);
+    setStage("planning");
+    setStatusMsg("");
+    setSubqueries([]);
+    setSources([]);
+    sourcesRef.current = [];
     setReport(null);
+
     try {
-      const r = await runResearchAgent(query.trim());
-      setReport(r);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Research failed");
-    } finally {
+      await streamResearchAgent({
+        query: query.trim(),
+        onEvent: (e) => {
+          switch (e.type) {
+            case "status":
+              setStage(e.stage);
+              setStatusMsg(e.message);
+              break;
+            case "plan":
+              setSubqueries(e.subqueries);
+              break;
+            case "source_found":
+              sourcesRef.current = [...sourcesRef.current, { ...e.source, scored: false }];
+              setSources(sourcesRef.current);
+              break;
+            case "source_scored":
+              sourcesRef.current = sourcesRef.current.map((s) =>
+                s.id === e.id
+                  ? {
+                      ...s,
+                      credibility: e.credibility,
+                      credibility_breakdown: e.credibility_breakdown,
+                      notes: e.notes,
+                      scored: true,
+                    }
+                  : s,
+              );
+              setSources(sourcesRef.current);
+              break;
+            case "report":
+              setReport(e.report);
+              break;
+            case "done":
+              setStage("done");
+              setLoading(false);
+              break;
+            case "error":
+              toast.error(e.error);
+              setStage("error");
+              setLoading(false);
+              break;
+          }
+        },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Stream failed");
       setLoading(false);
+      setStage("error");
     }
   };
 
-  const sourcesById = new Map((report?.sources || []).map((s) => [s.id, s]));
   const conf = report?.confidence;
   const confMeta = conf ? CONFIDENCE_META[conf.label] : null;
+  const sourcesById = new Map(sources.map((s) => [s.id, s]));
+  const scoredCount = sources.filter((s) => s.scored).length;
 
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -102,7 +170,7 @@ export default function ResearchAgentPage() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Multi-source web research → credibility-scored evidence → executive summary with confidence rating.
+          Multi-source web research → credibility-scored evidence → executive summary with confidence rating. Watch each stage stream in real time.
         </p>
       </header>
 
@@ -127,16 +195,159 @@ export default function ResearchAgentPage() {
         </div>
       </Card>
 
-      {loading && (
-        <Card className="glass p-8 text-center text-sm text-muted-foreground space-y-2">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-          <div>Decomposing query · scanning sources · scoring credibility · synthesizing…</div>
+      {/* Progress timeline */}
+      {(loading || stage === "done") && (
+        <Card className="glass p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            {STAGES.map((s, i) => {
+              const reached = stageIdx >= i;
+              const current = stage === s.key && loading;
+              return (
+                <div key={s.key} className="flex items-center gap-2 flex-1 min-w-[80px]">
+                  {current ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : reached ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground/50" />
+                  )}
+                  <span
+                    className={`text-xs font-medium ${
+                      current ? "text-primary" : reached ? "text-foreground" : "text-muted-foreground/60"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                  {i < STAGES.length - 1 && (
+                    <div
+                      className={`flex-1 h-px ${
+                        stageIdx > i ? "bg-emerald-400/40" : "bg-border"
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {statusMsg && (
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              {statusMsg}
+              {stage === "scoring" && sources.length > 0 && (
+                <span className="ml-auto font-mono">
+                  {scoredCount}/{sources.length}
+                </span>
+              )}
+            </div>
+          )}
         </Card>
       )}
 
+      {/* Plan */}
+      {subqueries.length > 0 && (
+        <Card className="glass p-5 space-y-2">
+          <div className="flex items-center gap-2">
+            <ListTree className="h-4 w-4 text-primary" />
+            <h3 className="font-heading font-semibold">Research Plan</h3>
+          </div>
+          <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+            {subqueries.map((q, i) => <li key={i}>{q}</li>)}
+          </ol>
+        </Card>
+      )}
+
+      {/* Live sources */}
+      {sources.length > 0 && (
+        <Card className="glass p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ExternalLink className="h-4 w-4 text-primary" />
+              <h3 className="font-heading font-semibold">
+                Sources {report ? "& Credibility" : "Discovered"}
+              </h3>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {sources.length} found · {scoredCount} scored
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {sources
+              .slice()
+              .sort((a, b) => (b.credibility ?? -1) - (a.credibility ?? -1))
+              .map((s) => {
+                const meta = TYPE_META[s.type] || TYPE_META.other;
+                const Icon = meta.icon;
+                return (
+                  <div
+                    key={s.id}
+                    className={`border rounded-lg p-4 bg-background/30 space-y-2 transition-all ${
+                      s.scored ? "border-border/50" : "border-primary/30 animate-pulse-slow"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                          <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                          <span className={meta.color}>{meta.label}</span>
+                          <span>·</span>
+                          <span>{s.domain}</span>
+                          {s.published && <><span>·</span><span>{s.published}</span></>}
+                        </div>
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium text-sm hover:text-primary inline-flex items-start gap-1"
+                        >
+                          <span className="text-primary font-mono">[{s.id}]</span> {s.title}
+                          <ExternalLink className="h-3 w-3 mt-1 shrink-0 opacity-60" />
+                        </a>
+                      </div>
+                      <div className="text-right min-w-[60px]">
+                        {s.scored && s.credibility !== undefined ? (
+                          <>
+                            <div className={`text-2xl font-bold ${credColor(s.credibility)}`}>
+                              {s.credibility}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground uppercase">credibility</div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            scoring…
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{s.summary}</p>
+                    {s.scored && s.credibility_breakdown && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1">
+                        {(["authority", "recency", "methodology", "corroboration"] as const).map((k) => (
+                          <div key={k}>
+                            <div className="flex justify-between text-[10px] uppercase text-muted-foreground mb-0.5">
+                              <span>{k}</span>
+                              <span>{s.credibility_breakdown![k]}</span>
+                            </div>
+                            <Progress value={s.credibility_breakdown![k]} className="h-1" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {s.notes && (
+                      <p className="text-[11px] italic text-muted-foreground border-l-2 border-border pl-2">
+                        {s.notes}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </Card>
+      )}
+
+      {/* Final report */}
       {report && (
         <>
-          {/* Executive summary + confidence */}
           <Card className="glass p-6 space-y-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
@@ -168,7 +379,6 @@ export default function ResearchAgentPage() {
             )}
           </Card>
 
-          {/* Key findings */}
           {report.key_findings?.length > 0 && (
             <Card className="glass p-6 space-y-3">
               <div className="flex items-center gap-2">
@@ -210,7 +420,6 @@ export default function ResearchAgentPage() {
             </Card>
           )}
 
-          {/* Counterpoints + Gaps */}
           {(report.counterpoints?.length || report.gaps?.length) ? (
             <div className="grid md:grid-cols-2 gap-4">
               {report.counterpoints?.length ? (
@@ -237,80 +446,6 @@ export default function ResearchAgentPage() {
               ) : null}
             </div>
           ) : null}
-
-          {/* Sources */}
-          <Card className="glass p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ExternalLink className="h-4 w-4 text-primary" />
-                <h2 className="font-heading text-lg font-semibold">
-                  Sources & Credibility
-                </h2>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {report.sources.length} scored
-              </span>
-            </div>
-            <div className="grid gap-3">
-              {report.sources
-                .slice()
-                .sort((a, b) => b.credibility - a.credibility)
-                .map((s) => {
-                  const meta = TYPE_META[s.type] || TYPE_META.other;
-                  const Icon = meta.icon;
-                  return (
-                    <div
-                      key={s.id}
-                      className="border border-border/50 rounded-lg p-4 bg-background/30 space-y-2"
-                    >
-                      <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                            <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
-                            <span className={meta.color}>{meta.label}</span>
-                            <span>·</span>
-                            <span>{s.domain}</span>
-                            {s.published && <><span>·</span><span>{s.published}</span></>}
-                          </div>
-                          <a
-                            href={s.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium text-sm hover:text-primary inline-flex items-start gap-1"
-                          >
-                            <span className="text-primary font-mono">[{s.id}]</span> {s.title}
-                            <ExternalLink className="h-3 w-3 mt-1 shrink-0 opacity-60" />
-                          </a>
-                        </div>
-                        <div className="text-right">
-                          <div className={`text-2xl font-bold ${credColor(s.credibility)}`}>
-                            {s.credibility}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground uppercase">credibility</div>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{s.summary}</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1">
-                        {(["authority", "recency", "methodology", "corroboration"] as const).map((k) => (
-                          <div key={k}>
-                            <div className="flex justify-between text-[10px] uppercase text-muted-foreground mb-0.5">
-                              <span>{k}</span>
-                              <span>{s.credibility_breakdown[k]}</span>
-                            </div>
-                            <Progress value={s.credibility_breakdown[k]} className="h-1" />
-                          </div>
-                        ))}
-                      </div>
-                      {s.notes && (
-                        <p className="text-[11px] italic text-muted-foreground border-l-2 border-border pl-2">
-                          {s.notes}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          </Card>
         </>
       )}
     </div>

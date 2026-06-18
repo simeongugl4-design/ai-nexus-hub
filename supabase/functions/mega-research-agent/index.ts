@@ -6,60 +6,63 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are MEGAKUMUL RESEARCH AGENT — a rigorous multi-source research analyst.
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const GW = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-Process the query as if you ran multi-source web research across:
-- Peer-reviewed journals (nature.com, science.org, arxiv.org, pubmed)
-- Tier-1 news & analysis (ft.com, economist.com, reuters.com, bloomberg.com)
-- Institutional / government (who.int, nih.gov, worldbank.org, oecd.org, .gov)
-- Industry research (mckinsey.com, brookings.edu, rand.org, gartner.com)
-- Reference / encyclopedic (wikipedia.org — supporting only)
+async function callJSON(
+  model: string,
+  system: string,
+  user: string,
+  schema: unknown,
+  schemaName: string,
+): Promise<any> {
+  const resp = await fetch(GW, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: schemaName, strict: true, schema },
+      },
+    }),
+  });
+  if (!resp.ok) {
+    const t = await resp.text();
+    throw new Error(`Gateway ${resp.status}: ${t.slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  const content = data.choices?.[0]?.message?.content ?? "{}";
+  try {
+    return JSON.parse(content);
+  } catch {
+    return JSON.parse(content.replace(/```json|```/g, "").trim());
+  }
+}
 
-For EVERY source you cite, you MUST score credibility on these axes (0-100 each):
-- authority: publisher reputation & expertise
-- recency: how current the information is for this topic
-- methodology: rigor of underlying methods / primary vs secondary
-- corroboration: whether other independent sources agree
-The overall "credibility" score is a weighted blend.
-
-Rules:
-- Never invent sources. Use real, plausible URLs on real authoritative domains.
-- Distinguish established consensus from emerging findings and from speculation.
-- Flag conflicts of interest, single-study claims, and unresolved debates.
-- Confidence rating reflects the OVERALL strength of evidence behind your summary.
-
-Return STRICTLY the JSON schema requested — no prose outside JSON.`;
-
-const schema = {
+const planSchema = {
   type: "object",
   properties: {
-    executive_summary: {
-      type: "string",
-      description: "3-6 sentence executive summary in clear markdown.",
-    },
-    key_findings: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          finding: { type: "string" },
-          evidence_strength: {
-            type: "string",
-            enum: ["strong", "moderate", "weak", "contested"],
-          },
-          supporting_source_ids: {
-            type: "array",
-            items: { type: "integer" },
-          },
-        },
-        required: ["finding", "evidence_strength", "supporting_source_ids"],
-      },
-    },
-    counterpoints: {
+    subqueries: {
       type: "array",
       items: { type: "string" },
-      description: "Opposing views, limitations, or unresolved debates.",
+      description: "4-6 focused sub-questions to investigate.",
     },
+    plan_note: { type: "string" },
+  },
+  required: ["subqueries", "plan_note"],
+};
+
+const sourcesSchema = {
+  type: "object",
+  properties: {
     sources: {
       type: "array",
       items: {
@@ -82,11 +85,25 @@ const schema = {
               "other",
             ],
           },
-          published: {
-            type: "string",
-            description: "Year or YYYY-MM if known, else empty.",
-          },
+          published: { type: "string" },
           summary: { type: "string" },
+        },
+        required: ["id", "title", "url", "domain", "type", "summary"],
+      },
+    },
+  },
+  required: ["sources"],
+};
+
+const scoringSchema = {
+  type: "object",
+  properties: {
+    scored: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
           credibility: { type: "integer", minimum: 0, maximum: 100 },
           credibility_breakdown: {
             type: "object",
@@ -100,18 +117,37 @@ const schema = {
           },
           notes: { type: "string" },
         },
-        required: [
-          "id",
-          "title",
-          "url",
-          "domain",
-          "type",
-          "summary",
-          "credibility",
-          "credibility_breakdown",
-        ],
+        required: ["id", "credibility", "credibility_breakdown", "notes"],
       },
     },
+  },
+  required: ["scored"],
+};
+
+const synthSchema = {
+  type: "object",
+  properties: {
+    executive_summary: { type: "string" },
+    key_findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          finding: { type: "string" },
+          evidence_strength: {
+            type: "string",
+            enum: ["strong", "moderate", "weak", "contested"],
+          },
+          supporting_source_ids: {
+            type: "array",
+            items: { type: "integer" },
+          },
+        },
+        required: ["finding", "evidence_strength", "supporting_source_ids"],
+      },
+    },
+    counterpoints: { type: "array", items: { type: "string" } },
+    gaps: { type: "array", items: { type: "string" } },
     confidence: {
       type: "object",
       properties: {
@@ -126,18 +162,14 @@ const schema = {
           items: { type: "string" },
         },
       },
-      required: ["rating", "label", "rationale"],
-    },
-    gaps: {
-      type: "array",
-      items: { type: "string" },
-      description: "Unknowns / research gaps worth investigating next.",
+      required: ["rating", "label", "rationale", "what_would_change_it"],
     },
   },
   required: [
     "executive_summary",
     "key_findings",
-    "sources",
+    "counterpoints",
+    "gaps",
     "confidence",
   ],
 };
@@ -146,93 +178,140 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  try {
-    const { query } = await req.json();
-    if (!query || typeof query !== "string") {
-      return new Response(JSON.stringify({ error: "Missing query" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const resp = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3.1-pro-preview",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: `Research query: ${query}\n\nReturn at least 6 high-quality sources across multiple source types when relevant.`,
-            },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "research_agent_report",
-              strict: true,
-              schema,
-            },
-          },
-        }),
-      },
-    );
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      console.error("AI gateway error:", resp.status, text);
-      if (resp.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (resp.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(
-        JSON.stringify({ error: "Research agent temporarily unavailable" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content ?? "{}";
-    let report: unknown;
-    try {
-      report = JSON.parse(content);
-    } catch {
-      // Some models wrap JSON in ```json fences
-      const cleaned = content.replace(/```json|```/g, "").trim();
-      report = JSON.parse(cleaned);
-    }
-
-    return new Response(JSON.stringify({ report }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("mega-research-agent error:", e);
+  if (!LOVABLE_API_KEY) {
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
+  let query = "";
+  try {
+    const body = await req.json();
+    query = body.query;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (!query) {
+    return new Response(JSON.stringify({ error: "Missing query" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (obj: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      };
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+      try {
+        const FAST = "google/gemini-3-flash-preview";
+        const PRO = "google/gemini-3.1-pro-preview";
+
+        // STAGE 1 — PLAN
+        send({ type: "status", stage: "planning", message: "Decomposing query into sub-questions…" });
+        const plan = await callJSON(
+          FAST,
+          "You are a research planner. Break the user's query into 4-6 focused, non-overlapping sub-questions that, together, would fully answer it.",
+          `Query: ${query}`,
+          planSchema,
+          "research_plan",
+        );
+        send({ type: "plan", subqueries: plan.subqueries, note: plan.plan_note });
+
+        // STAGE 2 — DISCOVER SOURCES
+        send({ type: "status", stage: "searching", message: "Searching multi-source web for evidence…" });
+        const discovered = await callJSON(
+          PRO,
+          `You are a research librarian. Given a query and sub-questions, return 6-8 high-quality real sources across multiple types (peer-reviewed, government, institutional, industry-report, news, reference). Use REAL authoritative domains (nature.com, arxiv.org, pubmed.ncbi.nlm.nih.gov, who.int, nih.gov, mckinsey.com, brookings.edu, ft.com, economist.com, reuters.com, ieee.org, sciencedirect.com, .gov, etc). Never fabricate; use plausible real URLs you actually know. Assign sequential ids starting at 1.`,
+          `Query: ${query}\n\nSub-questions:\n${plan.subqueries.map((s: string, i: number) => `${i + 1}. ${s}`).join("\n")}`,
+          sourcesSchema,
+          "research_sources",
+        );
+
+        // Stream sources one by one
+        for (const s of discovered.sources) {
+          send({ type: "source_found", source: s });
+          await sleep(120);
+        }
+
+        // STAGE 3 — SCORE
+        send({ type: "status", stage: "scoring", message: "Scoring credibility of each source…" });
+        const scoring = await callJSON(
+          FAST,
+          `You score source credibility on four 0-100 axes:
+- authority: publisher reputation & domain expertise
+- recency: how current the information is for this topic
+- methodology: rigor / primary vs secondary
+- corroboration: agreement with independent sources
+The overall "credibility" is a weighted blend (authority 30%, methodology 30%, corroboration 25%, recency 15%). Add a short notes string flagging any caveats (single study, opinion piece, conflict of interest, etc).`,
+          `Query: ${query}\n\nSources to score (return one entry per id):\n${JSON.stringify(discovered.sources)}`,
+          scoringSchema,
+          "source_scoring",
+        );
+
+        // Stream scoring results
+        for (const s of scoring.scored) {
+          send({
+            type: "source_scored",
+            id: s.id,
+            credibility: s.credibility,
+            credibility_breakdown: s.credibility_breakdown,
+            notes: s.notes,
+          });
+          await sleep(150);
+        }
+
+        // STAGE 4 — SYNTHESIZE
+        send({ type: "status", stage: "synthesizing", message: "Synthesizing executive summary & confidence rating…" });
+
+        // Merge scored data into sources for synthesis context
+        const scoreMap = new Map(scoring.scored.map((s: any) => [s.id, s]));
+        const fullSources = discovered.sources.map((s: any) => ({
+          ...s,
+          ...(scoreMap.get(s.id) || {}),
+        }));
+
+        const synthesis = await callJSON(
+          PRO,
+          `You are a senior research analyst. Using ONLY the provided scored sources, produce an executive summary, key findings (each tagged by evidence strength and citing source ids), counterpoints, research gaps, and an overall confidence rating (0-100 + label) with a clear rationale and what would change it. Weight higher-credibility sources more heavily. Distinguish consensus from emerging or contested evidence.`,
+          `Query: ${query}\n\nScored sources:\n${JSON.stringify(fullSources)}`,
+          synthSchema,
+          "research_synthesis",
+        );
+
+        send({
+          type: "report",
+          report: {
+            ...synthesis,
+            sources: fullSources,
+          },
+        });
+        send({ type: "done" });
+        controller.close();
+      } catch (e) {
+        console.error("research-agent error:", e);
+        send({
+          type: "error",
+          error: e instanceof Error ? e.message : "Unknown error",
+        });
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 });
