@@ -21,9 +21,10 @@ export type AgentSource = {
     | "other";
   published?: string;
   summary: string;
-  credibility: number;
-  credibility_breakdown: CredibilityBreakdown;
+  credibility?: number;
+  credibility_breakdown?: CredibilityBreakdown;
   notes?: string;
+  scored?: boolean;
 };
 
 export type KeyFinding = {
@@ -53,9 +54,37 @@ export type ResearchAgentReport = {
   gaps?: string[];
 };
 
-export async function runResearchAgent(
-  query: string,
-): Promise<ResearchAgentReport> {
+export type AgentStage =
+  | "idle"
+  | "planning"
+  | "searching"
+  | "scoring"
+  | "synthesizing"
+  | "done"
+  | "error";
+
+export type AgentEvent =
+  | { type: "status"; stage: AgentStage; message: string }
+  | { type: "plan"; subqueries: string[]; note?: string }
+  | { type: "source_found"; source: AgentSource }
+  | {
+      type: "source_scored";
+      id: number;
+      credibility: number;
+      credibility_breakdown: CredibilityBreakdown;
+      notes?: string;
+    }
+  | { type: "report"; report: ResearchAgentReport }
+  | { type: "done" }
+  | { type: "error"; error: string };
+
+export async function streamResearchAgent({
+  query,
+  onEvent,
+}: {
+  query: string;
+  onEvent: (e: AgentEvent) => void;
+}): Promise<void> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -68,10 +97,38 @@ export async function runResearchAgent(
     body: JSON.stringify({ query }),
   });
 
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    throw new Error(data?.error || `Request failed (${resp.status})`);
+  if (!resp.ok || !resp.body) {
+    const data = await resp.json().catch(() => ({}));
+    onEvent({
+      type: "error",
+      error: data?.error || `Request failed (${resp.status})`,
+    });
+    return;
   }
-  if (!data?.report) throw new Error("Empty report");
-  return data.report as ResearchAgentReport;
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let idx: number;
+    while ((idx = buffer.indexOf("\n\n")) !== -1) {
+      const raw = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const line = raw.split("\n").find((l) => l.startsWith("data: "));
+      if (!line) continue;
+      const json = line.slice(6).trim();
+      if (!json) continue;
+      try {
+        const evt = JSON.parse(json) as AgentEvent;
+        onEvent(evt);
+      } catch {
+        // ignore malformed
+      }
+    }
+  }
 }
