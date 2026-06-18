@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import DashboardPage from "./pages/DashboardPage";
 import ChatPage from "./pages/ChatPage";
 import ResearchPage from "./pages/ResearchPage";
+import ResearchAgentPage from "./pages/ResearchAgentPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ImageAIPage from "./pages/ImageAIPage";
 import CodeAssistantPage from "./pages/CodeAssistantPage";
