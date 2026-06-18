@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, Search, FileText, ImageIcon,
-  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles, Box, GalleryHorizontalEnd, Brain
+  Code, BookOpen, Star, Clock, Puzzle, Settings, ChevronLeft, ChevronRight, Calculator, CreditCard, LogOut, Sparkles, Box, GalleryHorizontalEnd, Brain, ShieldCheck
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -22,6 +22,7 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "AI Chat", url: "/chat", icon: MessageSquare },
   { title: "Deep Research", url: "/research", icon: Search },
+  { title: "Research Agent", url: "/research-agent", icon: ShieldCheck },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Image AI", url: "/image-ai", icon: ImageIcon },
   { title: "Code Assistant", url: "/code", icon: Code },
